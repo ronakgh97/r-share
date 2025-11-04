@@ -9,6 +9,8 @@ import org.springframework.stereotype.Component;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static com.scar.server.Controller.SessionController.*;
+
 /**
  * Registry to track active socket connections and pair them by session ID
  */
@@ -21,6 +23,7 @@ public class SocketSessionRegistry {
 
     // Map: sessionId -> ActiveTransfer (both parties connected)
     private final Map<String, ActiveTransfer> activeTransfers = new ConcurrentHashMap<>();
+    private long totalBytesTransferred = 0;
 
     /**
      * Register a new socket connection with session ID
@@ -28,8 +31,8 @@ public class SocketSessionRegistry {
      * or null if this is the first to arrive
      */
     public synchronized PendingConnection registerConnection(String sessionId, Channel channel, String role, Session session, Object handler) {
-        log.info("Socket connection: {} | role={} | session={}",
-                channel.remoteAddress(), role, sessionId.substring(0, 8));
+        log.info("Socket connection: {} | role={}{}{} | session={}{}{}",
+                channel.remoteAddress(), green, role, reset, yellow, sessionId.substring(0, 8), reset);
 
         // Check if partner already waiting
         PendingConnection pending = pendingConnections.get(sessionId);
@@ -60,7 +63,10 @@ public class SocketSessionRegistry {
     }
 
     public void removeTransfer(String sessionId) {
-        activeTransfers.remove(sessionId);
+        ActiveTransfer transfer = activeTransfers.remove(sessionId);
+        if (transfer != null) {
+            totalBytesTransferred += transfer.bytesTransferred;
+        }
         pendingConnections.remove(sessionId);
         log.info("Removed session: {}", sessionId.substring(0, 8));
     }
@@ -79,6 +85,7 @@ public class SocketSessionRegistry {
             ActiveTransfer transfer = entry.getValue();
             if (transfer.senderChannel == channel || transfer.receiverChannel == channel) {
                 log.info("Removed active transfer: {}", entry.getKey().substring(0, 8));
+                totalBytesTransferred += transfer.bytesTransferred;
                 // Close the other channel too
                 if (transfer.senderChannel != channel && transfer.senderChannel.isActive()) {
                     transfer.senderChannel.close();
@@ -159,7 +166,7 @@ public class SocketSessionRegistry {
 
         if (transfer.senderAcked && transfer.receiverAcked) {
             log.info("Both clients ACK'd! Enabling relay mode | Session: {}", sessionId.substring(0, 8));
-            
+
             // Enable paired mode on both handlers
             if (transfer.senderHandler instanceof FileTransferHandler) {
                 ((FileTransferHandler) transfer.senderHandler).setPaired(true);
@@ -171,5 +178,12 @@ public class SocketSessionRegistry {
             log.info("Waiting for both ACKs | Session: {} | Sender: {}, Receiver: {}",
                     sessionId.substring(0, 8), transfer.senderAcked, transfer.receiverAcked);
         }
+    }
+
+    public long getTotalBytesTransferred() {
+        long activeBytes = activeTransfers.values().stream()
+                .mapToLong(transfer -> transfer.bytesTransferred)
+                .sum();
+        return totalBytesTransferred + activeBytes;
     }
 }

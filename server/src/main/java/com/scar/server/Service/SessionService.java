@@ -12,6 +12,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeoutException;
 
+import static com.scar.server.Controller.SessionController.*;
+
+
 @Service
 public class SessionService {
     private static final long BLOCKING_TIMEOUT = 30_000; // 30 seconds
@@ -41,15 +44,17 @@ public class SessionService {
 
         sessions.put(sessionId, session);
 
-        log.info(" Created session: {} | {} -> {}",
-                sessionId.substring(0, 8),
-                senderFp.substring(0, 8),
-                receiverFp.substring(0, 8));
+        log.info(" Created session: {}{}{} | {}{}{} -> {}{}{}",
+                yellow, sessionId.substring(0, 8), reset,
+                blue, senderFp.substring(0, 8), reset,
+                red, receiverFp.substring(0, 8), reset);
 
         // Check if listener is already waiting
         CompletableFuture<Session> Waiting = waitingReceivers.get(receiverFp);
         if (Waiting != null) {
-            log.info("Listen already waiting! Matching immediately");
+            log.info("Listener: {}{}{} already waiting! Matching: {}{}{} immediately",
+                    red, receiverFp.substring(0, 8), reset,
+                    blue, senderFp.substring(0, 8), reset);
             // Listen is waiting! Match immediately
             session.setStatus("matched");
             Waiting.complete(session); // Wake up Listener
@@ -58,7 +63,8 @@ public class SessionService {
         }
 
         // Listener not waiting yet, Sender waits
-        log.info("Listener not ready yet, Sender blocking...");
+        log.info("Listener: {}{}{} not ready yet, Sender: {}{}{} blocking...", red, receiverFp.substring(0, 8), reset,
+                blue, senderFp.substring(0, 8), reset);
         CompletableFuture<Session> future = new CompletableFuture<>();
         waitingSenders.put(sessionId, future);
 
@@ -67,10 +73,10 @@ public class SessionService {
                 .execute(() -> {
                     if (!future.isDone()) {
 
-                        log.warn("Session timeout: {} | {} -> {}",
-                                sessionId.substring(0, 8),
-                                senderFp.substring(0, 8),
-                                receiverFp.substring(0, 8));
+                        log.warn("Session timeout: {}{}{} | {}{}{} -> {}{}{}",
+                                yellow, sessionId.substring(0, 8), reset,
+                                blue, senderFp.substring(0, 8), reset,
+                                red, receiverFp.substring(0, 8), reset);
                         session.setStatus("timeout");
                         future.completeExceptionally(new TimeoutException("Receiver didn't respond"));
                         waitingSenders.remove(sessionId);
@@ -88,8 +94,7 @@ public class SessionService {
             return failed;
         }
 
-        log.info("Receiver waiting for incoming transfer: {}", receiverFp.substring(0, 8));
-
+        log.info("Listener: {}{}{} waiting", red, receiverFp.substring(0, 8), reset);
         // Check if Sender already initiated
         Optional<Session> pendingSession = sessions.values().stream()
                 .filter(s -> s.getReceiverFp().equals(receiverFp))
@@ -111,7 +116,7 @@ public class SessionService {
         }
 
         // Sender not initiated yet, Listener waits
-        log.info("Sender not ready yet, Listener blocking...");
+        log.info("Sender not ready yet, Listener: {}{}{} blocking...", red, receiverFp.substring(0, 8), reset);
         CompletableFuture<Session> future = new CompletableFuture<>();
         waitingReceivers.put(receiverFp, future);
 
@@ -141,7 +146,7 @@ public class SessionService {
         Session session = sessions.get(sessionId);
         if (session != null) {
             session.setStatus("completed");
-            System.out.println("[SESSION] Completed: " + sessionId.substring(0, 8));
+            log.info("Completed Session: {}{}{}", yellow, sessionId.substring(0, 8), reset);
         }
     }
 }

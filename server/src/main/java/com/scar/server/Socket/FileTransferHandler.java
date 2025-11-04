@@ -13,6 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import static com.scar.server.Controller.SessionController.*;
+
 /**
  * Handles file transfer socket connections
  * Protocol:
@@ -73,8 +75,8 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
             forwardData(ctx, buf);
         } else {
             // Buffer data until both clients ACK
-            log.debug("Buffering {} bytes until paired | Session: {}",
-                    buf.readableBytes(), sessionId.substring(0, 8));
+            log.debug("Buffering {} bytes until paired | Session: {}{}{}",
+                    buf.readableBytes(), yellow, sessionId.substring(0, 8), reset);
             bufferedData.add(new BufferedMessage(ctx, buf.retain()));
             buf.release();
         }
@@ -97,7 +99,7 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
 
         if ("ACK".equals(ackMessage)) {
             this.readyAckReceived = true;
-            log.info("ACK received from {} | Session: {}", role, sessionId.substring(0, 8));
+            log.info("ACK received from {}{}{} | Session: {}{}{}", green, role, reset, yellow, sessionId.substring(0, 8), reset);
 
             // Mark ACK in the transfer object
             SocketSessionRegistry.ActiveTransfer transfer = registry.getActiveTransfer(sessionId);
@@ -114,7 +116,7 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
             }
             buf.release();
         } else {
-            log.error("Expected ACK, got: {} | Session: {}", ackMessage, sessionId.substring(0, 8));
+            log.error("Expected ACK, got: {} | Session: {}{}{}", ackMessage, yellow, sessionId.substring(0, 8), reset);
             buf.release();
             ctx.close();
         }
@@ -147,29 +149,29 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
         this.sessionId = parts[0].trim();
         this.role = parts[1].trim();
 
-        log.info("Handshake: session={}, role={}", sessionId.substring(0, 8), role);
+        log.info("Handshake: session={}{}{}, role={}{}{}", yellow, sessionId.substring(0, 8), reset, green, role, green);
 
         // Validate session exists
         Optional<Session> sessionOpt = sessionService.getSession(sessionId);
         if (sessionOpt.isEmpty()) {
-            log.error("Invalid session ID: {}", sessionId.substring(0, 8));
+            log.error("Invalid session ID: {}{}{}", yellow, sessionId.substring(0, 8), reset);
             ctx.close();
             return;
         }
 
         Session session = sessionOpt.get();
-        log.info("Session validated: {} | {} -> {}",
-                sessionId.substring(0, 8),
-                session.getSenderFp().substring(0, 8),
-                session.getReceiverFp().substring(0, 8));
+        log.info("Session validated: {}{}{} | {}{}{} -> {}{}{}",
+                yellow, sessionId.substring(0, 8), reset,
+                blue, session.getSenderFp().substring(0, 8), reset,
+                red, session.getReceiverFp().substring(0, 8), reset);
 
         // Register connection - returns partner's pending connection if pairing complete
         SocketSessionRegistry.PendingConnection partner = registry.registerConnection(
                 sessionId, ctx.channel(), role, session, this);
 
         if (partner != null) {
-            log.info("Transfer ready! Session: {} | Both parties connected, sending READY signals",
-                    sessionId.substring(0, 8));
+            log.info("Transfer ready! Session: {}{}{} | Both parties connected, sending READY signals",
+                    yellow, sessionId.substring(0, 8), reset);
 
             // Get the active transfer and store both handlers
             SocketSessionRegistry.ActiveTransfer transfer = registry.getActiveTransfer(sessionId);
@@ -189,7 +191,7 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
                 return;
             }
 
-            log.info("READY signals sent, waiting for ACKs | Session: {}", sessionId.substring(0, 8));
+            log.info("READY signals sent, waiting for ACKs | Session: {}{}{}", yellow, sessionId.substring(0, 8), reset);
 
             // DON'T set paired=true here! Wait for both ACKs first
             // The checkBothAcked() method will set paired=true when both clients ACK
@@ -204,7 +206,7 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
     private void forwardData(ChannelHandlerContext ctx, ByteBuf buf) {
         SocketSessionRegistry.ActiveTransfer transfer = registry.getActiveTransfer(sessionId);
         if (transfer == null) {
-            log.error("No active transfer for session: {}", sessionId);
+            log.error("No active transfer for session: {}{}{}", yellow, sessionId, reset);
             buf.release();
             return;
         }
@@ -228,11 +230,15 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
         ByteBuf copy = buf.copy();
         target.writeAndFlush(copy);
 
-        if (transfer.bytesTransferred % 1048576 == 0) { // Log every 1MB
-            log.info("Transferred: {} MB | Session: {}",
-                    transfer.bytesTransferred / 1048576,
-                    sessionId.substring(0, 8));
-        }
+        //if (transfer.bytesTransferred % 1048576 == 0) { // Log every 1MB
+        //    log.info("Transferred: {} MB | Session: {}",
+        //            transfer.bytesTransferred / 1048576,
+        //            sessionId.substring(0, 8));
+        //}
+
+        //log.info("Total bytes: {}{}{} Transferred for session: {}{}{}",
+        //        cyan, transfer.bytesTransferred, reset,
+        //        yellow, sessionId.substring(0, 8), reset);
 
         buf.release();
     }
@@ -240,15 +246,15 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         if (sessionId != null) {
-            log.info("Channel disconnected: {} | Session: {}",
+            log.info("Channel disconnected: {} | Session: {}{}{}",
                     ctx.channel().remoteAddress(),
-                    sessionId.substring(0, 8));
+                    yellow, sessionId.substring(0, 8), reset);
 
             SocketSessionRegistry.ActiveTransfer transfer = registry.getActiveTransfer(sessionId);
             if (transfer != null) {
-                log.info("Transfer complete: {} bytes | Session: {}",
-                        transfer.bytesTransferred,
-                        sessionId.substring(0, 8));
+                log.info("Transfer complete: ({}) gigabytes | Session: {}{}{}",
+                        transfer.bytesTransferred / (1024 * 1024 * 1024),
+                        yellow, sessionId.substring(0, 8), reset);
             }
 
             registry.removeByChannel(ctx.channel());
@@ -263,7 +269,7 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        log.error("Socket error: {}", cause.getMessage());
+        log.warn("Socket warning: {}", cause.getMessage());
 
         // Release buffered data on error
         for (BufferedMessage msg : bufferedData) {
@@ -282,8 +288,8 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
 
         // Flush any buffered data now that we're paired
         if (paired && !bufferedData.isEmpty()) {
-            log.info("Flushing {} buffered chunks | Session: {}",
-                    bufferedData.size(), sessionId.substring(0, 8));
+            log.info("Flushing {} buffered chunks | Session: {}{}{}",
+                    bufferedData.size(), yellow, sessionId.substring(0, 8), reset);
             for (BufferedMessage msg : bufferedData) {
                 if (msg.buf.isReadable()) {
                     forwardData(msg.ctx, msg.buf);

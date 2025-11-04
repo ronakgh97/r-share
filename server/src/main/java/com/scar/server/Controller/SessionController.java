@@ -1,10 +1,8 @@
 package com.scar.server.Controller;
 
-import com.scar.server.Dto.ListenRequest;
-import com.scar.server.Dto.ListenResponse;
-import com.scar.server.Dto.ServeRequest;
-import com.scar.server.Dto.ServeResponse;
+import com.scar.server.Dto.*;
 import com.scar.server.Service.SessionService;
+import com.scar.server.Socket.SocketSessionRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,17 +10,28 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.async.DeferredResult;
 
+import java.time.Instant;
+
 @RestController
 @RequestMapping("/api/relay")
 public class SessionController {
 
+    public static final String blue = "\u001B[34m"; // Blue
+    public static final String red = "\u001B[31m";  // Red
+    public static final String reset = "\u001B[0m"; // Reset
+    public static final String yellow = "\u001B[33m"; // Yellow
+    public static final String green = "\u001B[32m"; // Green
+    public static final String cyan = "\u001B[36m"; // Cyan
+
     private static final Logger log = LoggerFactory.getLogger(SessionController.class);
 
     private final SessionService sessionService;
+    private final SocketSessionRegistry socketSessionRegistry;
 
     @Autowired
-    public SessionController(SessionService sessionService) {
+    public SessionController(SessionService sessionService, SocketSessionRegistry socketSessionRegistry) {
         this.sessionService = sessionService;
+        this.socketSessionRegistry = socketSessionRegistry;
     }
 
     /**
@@ -33,9 +42,9 @@ public class SessionController {
     public DeferredResult<ResponseEntity<ServeResponse>> initiate(
             @RequestBody ServeRequest request) {
 
-        log.info("Session request from sender {} to receiver {}",
-                request.getSenderFp(),
-                request.getReceiverFp()
+        log.info("Session request from sender {}{}{} to receiver {}{}{}",
+                blue, request.getSenderFp().substring(0,8), reset,
+                red, request.getReceiverFp().substring(0,8), reset
 
         );
 
@@ -104,8 +113,8 @@ public class SessionController {
     public DeferredResult<ResponseEntity<ListenResponse>> listen(
             @RequestBody ListenRequest request) {
 
-        log.info("Listen request from receiver {}",
-                request.getReceiverFp());
+        log.info("Listen request from receiver {}{}{}",
+                red, request.getReceiverFp().substring(0,8), reset);
 
         DeferredResult<ResponseEntity<ListenResponse>> result = new DeferredResult<>(30_000L); // 30 second
         // timeout
@@ -148,7 +157,7 @@ public class SessionController {
     }
 
     /**
-     * Optional: Mark session as complete (cleanup)
+     * Mark session as complete (cleanup)
      */
     @DeleteMapping("/session/{sessionId}")
     public ResponseEntity<String> completeSession(@PathVariable String sessionId) {
@@ -158,10 +167,14 @@ public class SessionController {
     }
 
     /**
-     * Health check
+     * Check total bandwidth usage
      */
-    @GetMapping("/health")
-    public ResponseEntity<String> health() {
-        return ResponseEntity.ok("OK");
+    @GetMapping("/bandwidth")
+    public ResponseEntity<Status> getBandwidth() {
+        long totalBytes = socketSessionRegistry.getTotalBytesTransferred();
+        long totalGigaBytes = totalBytes / (1024 * 1024 * 1024);
+        log.info("Total bandwidth used: {}{}{} GB", red, totalGigaBytes, reset);
+        Status status = new Status(Instant.now().toString(), totalGigaBytes);
+        return ResponseEntity.ok(status);
     }
 }
