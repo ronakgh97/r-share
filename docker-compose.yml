@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  # R-Share Relay Server
+
+  rshare-server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    
+    container_name: rshare-server
+    
+    # Restart policy for production
+    restart: unless-stopped
+    
+    # Port mappings
+    ports:
+      - "8080:8080"   # HTTP API
+      - "10000:10000" # Socket server
+    
+    # Environment variables
+    environment:
+      # Spring Boot profile
+      - SPRING_PROFILES_ACTIVE=default
+      
+      # Server configuration
+      - SERVER_PORT=8080
+      - SERVER_SOCKET_PORT=10000
+      
+      # Session configuration
+      - RSHARE_SESSION_TIMEOUT_MS=30000
+      - RSHARE_SESSION_CLEANUP_INTERVAL_MS=60000
+      
+      # JVM options (optimized for 1GB RAM - Oracle Free Tier)
+      - JAVA_OPTS=-Xmx768m -Xms256m -XX:+UseG1GC -XX:MaxGCPauseMillis=100
+      
+      # Logging
+      - LOGGING_LEVEL_ROOT=INFO
+      - LOGGING_LEVEL_COM_SCAR=INFO
+    
+    # Volume mounts for persistent data
+    volumes:
+      # Application logs
+      - ./logs:/app/logs
+    
+    # Health check
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    # Network configuration
+    networks:
+      - rshare-network
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+
+# Networks
+
+networks:
+  rshare-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+
+# Volumes
+
+volumes:
+  logs:
+    driver: local
+
+# USAGE INSTRUCTIONS
+#
+# Start the server:
+#   docker-compose up -d
+#
+# View logs:
+#   docker-compose logs -f rshare-server
+#
+# Stop the server:
+#   docker-compose down
+#
+# Rebuild and restart:
+#   docker-compose up -d --build
+#
+# Check health status:
+#   docker-compose ps
+#   curl http://localhost:8080/actuator/health
+#
+# View resource usage:
+#   docker stats rshare-server
+#
+# ═══════════════════════════════════════════════════════════════════════════
