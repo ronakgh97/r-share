@@ -27,7 +27,7 @@ public class Session {
         this.signature = signature;
         this.fileHash = fileHash;
         this.createdAt = System.currentTimeMillis();
-        this.expiresAt = this.createdAt + 30_000;  // 30 seconds
+        this.expiresAt = this.createdAt + 120_000;  // 2 mins
         this.status = "waiting_receiver";
     }
 
