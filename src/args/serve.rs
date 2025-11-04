@@ -47,7 +47,7 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool) -> Result<()> {
         .get(&to)
         .ok_or_else(|| Error::InvalidInput(format!("Contact '{}' not found", to)))?;
 
-    println!("{} File ready", "✓".bright_green());
+    // Display transfer info
     println!("   File: {}", filename.bright_yellow());
     println!(
         "   Size: {} bytes ({:.2} MB)",
@@ -119,16 +119,16 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool) -> Result<()> {
     println!();
 
     // Socket now ready for binary file transfer
-    println!("{} Starting file transfer...", "✓".bright_green());
+    println!("{} Sending file...", "◆".bright_green());
 
     // Send file data with progress bar
     let mut file_reader = File::open(&file).await?;
     let pb = ProgressBar::new(filesize);
     pb.set_style(
         ProgressStyle::default_bar()
-            .template("{spinner:.green} [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta})")
+            .template("{spinner:.green} [ {bar:60.cyan/blue} ] {bytes}/{total_bytes} ({bytes_per_sec}) ({eta})")
             .unwrap()
-            .progress_chars(" ▰ ▰ ▰ ▱ ▱ "),
+            .progress_chars("░▒▓█"),
     );
 
     let mut buffer = vec![0u8; 64 * 1024]; // 64KB chunks
@@ -180,7 +180,7 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool) -> Result<()> {
     }
 
     println!();
-    println!("{} File sent successfully!", "✓".bright_green().bold());
+    println!("{} File reached successfully! :)", "✓".bright_green().bold());
     println!(
         "   Transferred: {} bytes ({:.2} MB)",
         total_sent,

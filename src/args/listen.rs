@@ -11,7 +11,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 /// Listen for incoming file transfers
 pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool) -> Result<()> {
-    println!("{}", "Starting listener...\n".bright_cyan().bold());
+    println!("{}", "Listening...\n".bright_cyan().bold());
 
     // Load config and keys
     let config = config::load_config()?;
@@ -112,7 +112,7 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool) -> Result<()
             .map_err(|_| Error::InvalidInput("Invalid signature length".into()))?,
     );
 
-    // Verify signature - enhanced error message
+    // Verify signature
     if let Err(_) = signing::verify_signature(&sender_key, &metadata_msg, &signature) {
         println!();
         println!("{} SIGNATURE VERIFICATION FAILED!", "✗".bright_red().bold());
@@ -148,7 +148,7 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool) -> Result<()
         filesize as f64 / (1024.0 * 1024.0)
     );
     println!();
-    println!("{} Receiving file...", "✓".bright_cyan());
+    println!("{} Receiving file...", "◆".bright_cyan());
 
     // Receive file data with progress bar
     let file_path = download_path.join(&filename);
@@ -157,9 +157,9 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool) -> Result<()
     let pb = ProgressBar::new(filesize);
     pb.set_style(
         ProgressStyle::default_bar()
-            .template("{spinner:.green} [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta})")
+            .template("{spinner:.green} [ {bar:60.cyan/blue} ] {bytes}/{total_bytes} ({bytes_per_sec}) ⏱ ({eta})")
             .unwrap()
-            .progress_chars(" ▰ ▰ ▰ ▱ ▱ "),
+            .progress_chars("░▒▓█"),
     );
 
     let mut buffer = vec![0u8; 64 * 1024]; // 64KB chunks
@@ -254,7 +254,7 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool) -> Result<()
     session.flush().await?;
 
     println!();
-    println!("{} File received successfully!", "✓".bright_green().bold());
+    println!("{} File received successfully! ;)", "✓".bright_green().bold());
     println!("   Saved to: {}", file_path.display());
     println!(
         "   Size: {} bytes ({:.2} MB)",
