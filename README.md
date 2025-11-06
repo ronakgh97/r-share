@@ -7,7 +7,7 @@
 
 **R-Share** is a secure, **blazingly-fast** and lightweight peer-to-peer file sharing tool with **Ed25519 cryptographic
 signatures** and *
-*SHA256 integrity verification**. Built with Rust CLI clients and a Spring Boot + Netty relay server.
+**SHA256 integrity verification**. Built with Rust CLI clients and a Spring Boot + Netty relay server.
 
 ## Features
 
