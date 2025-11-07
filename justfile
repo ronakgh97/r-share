@@ -2,11 +2,12 @@
 
 set windows-shell := ["powershell.exe"]
 
-release:
-  cargo build --release    
+# Clean build
+clean-build:
+    cargo clean
+    cargo build --release
 
-lint:
-  cargo clippy
-
-
-
+# Clean install (includes removing existing installation)
+clean-install:
+    remove-Item "C:\Users\ronak\.rshare"
+    cargo install --path .
