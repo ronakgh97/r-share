@@ -28,7 +28,7 @@ FROM eclipse-temurin:24-jre-alpine
 
 LABEL maintainer="rshare-ronakgh97"
 LABEL description="R-Share Relay Server - Secure P2P File Transfer"
-LABEL version="0.0.1-beta"
+LABEL version="1.0.0"
 
 # Install dependencies for health checks and debugging
 RUN apk add --no-cache \
