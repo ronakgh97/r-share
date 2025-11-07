@@ -46,11 +46,13 @@ public class SessionController {
     public DeferredResult<ResponseEntity<ServeResponse>> initiate(
             @RequestBody ServeRequest request) {
 
-        log.info("Session request from sender {}{}{} to receiver {}{}{}",
-                blue, request.getSenderFp().substring(0,8), reset,
-                red, request.getReceiverFp().substring(0,8), reset
+        if (request.getSenderFp() != null && request.getReceiverFp() != null) {
+            log.info("Session request from sender {}{}{} to receiver {}{}{}",
+                    blue, request.getSenderFp().substring(0,8), reset,
+                    red, request.getReceiverFp().substring(0,8), reset
 
-        );
+            );
+        }
 
         DeferredResult<ResponseEntity<ServeResponse>> result = new DeferredResult<>(BLOCKING_TIMEOUT); // 30 second
         // timeout
@@ -117,8 +119,10 @@ public class SessionController {
     public DeferredResult<ResponseEntity<ListenResponse>> listen(
             @RequestBody ListenRequest request) {
 
-        log.info("Listen request from receiver {}{}{}",
-                red, request.getReceiverFp().substring(0,8), reset);
+        if (request.getReceiverFp() != null) {
+            log.info("Listen request from receiver {}{}{}",
+                    red, request.getReceiverFp().substring(0,8), reset);
+        }
 
         DeferredResult<ResponseEntity<ListenResponse>> result = new DeferredResult<>(BLOCKING_TIMEOUT); // 30 second
         // timeout

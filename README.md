@@ -53,7 +53,7 @@ signatures** and *
 ### 1. Deploy Server (Docker)
 
 ```shell
-git clone https://github.com/ronakgh97/rshare.git
+git clone https://github.com/ronakgh97/rshare
 cd rshare
 
 docker-compose up -d
@@ -238,11 +238,11 @@ sequenceDiagram
 
 ### Areas for Contribution
 
-- 🔐 Encryption implementation (AES-GCM)
-- 🧪 Test coverage (unit + integration)
-- 📱 Mobile clients (iOS, Android)
-- 🌐 Web UI
-- 📚 Documentation improvements
+- Encryption implementation (AES-GCM)
+- Test coverage (unit + integration)
+- Mobile clients (iOS, Android)
+- Web UI
+- Documentation improvements
 
 ## Stacks
 
