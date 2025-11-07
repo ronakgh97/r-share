@@ -11,7 +11,7 @@ use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 
 /// Serve (send) a file to a trusted contact
-pub async fn run(file: PathBuf, to: String, _quiet: bool) -> Result<()> {
+pub async fn run(file: PathBuf, to: String, _quiet: bool, local: bool) -> Result<()> {
     println!("{}", " Serving...\n".bright_cyan().bold());
 
     // Validate file exists
@@ -82,12 +82,20 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool) -> Result<()> {
     );
     println!();
 
-    // Create relay client from config
-    let relay_client = RelayClient::new(
-        config.server.http_url.clone(),
-        config.server.socket_host.clone(),
-        config.server.socket_port,
-    );
+    // Create relay client
+    let relay_client = if local {
+        RelayClient::new(
+            "http://localhost:8080".to_string(),
+            "localhost".to_string(),
+            10000,
+        )
+    } else {
+        RelayClient::new(
+            config.server.http_url.clone(),
+            config.server.socket_host.clone(),
+            config.server.socket_port,
+        )
+    };
 
     // Create transfer metadata and signature (includes file hash)
     let metadata_msg = format!("{}|{}|{}", filename, filesize, file_hash_hex);

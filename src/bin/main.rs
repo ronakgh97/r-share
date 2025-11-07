@@ -12,8 +12,21 @@ async fn main() -> Result<()> {
         Some(Commands::Init { keys, force }) => {
             init::run(keys, force).await?;
         }
-        Some(Commands::Listen { path, from, quiet }) => {
-            listen::run(path, from, quiet).await?;
+        Some(Commands::Listen {
+            path,
+            from,
+            quiet,
+            local,
+        }) => {
+            listen::run(path, from, quiet, local).await?;
+        }
+        Some(Commands::Serve {
+            file,
+            to,
+            quiet,
+            local,
+        }) => {
+            serve::run(file, to, quiet, local).await?;
         }
         Some(Commands::Trust { action }) => match action {
             TrustAction::Add { name, key } => {
@@ -26,9 +39,6 @@ async fn main() -> Result<()> {
                 trust::remove(name).await?;
             }
         },
-        Some(Commands::Serve { file, to, quiet }) => {
-            serve::run(file, to, quiet).await?;
-        }
         None => {
             show_welcome();
         }

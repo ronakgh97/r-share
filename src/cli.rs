@@ -37,6 +37,10 @@ pub enum Commands {
         #[arg(short, long, conflicts_with = "code")]
         from: String,
 
+        /// For development: use local relay server
+        #[arg(short, long)]
+        local: bool,
+
         /// Enable progress bars
         #[arg(short, long, default_value = "false")]
         quiet: bool,
@@ -50,6 +54,10 @@ pub enum Commands {
         /// Send to trusted contact by name
         #[arg(short, long, conflicts_with = "code")]
         to: String,
+
+        /// For development: use local relay server
+        #[arg(short, long)]
+        local: bool,
 
         /// Enable progress bars
         #[arg(short, long, default_value = "false")]
