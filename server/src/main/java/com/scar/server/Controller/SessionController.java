@@ -21,7 +21,7 @@ public class SessionController {
     private long BLOCKING_TIMEOUT;
 
     public static final String blue = "\u001B[34m"; // Blue
-    public static final String red = "\u001B[31m";  // Red
+    public static final String red = "\u001B[31m"; // Red
     public static final String reset = "\u001B[0m"; // Reset
     public static final String yellow = "\u001B[33m"; // Yellow
     public static final String green = "\u001B[32m"; // Green
@@ -48,8 +48,8 @@ public class SessionController {
 
         if (request.getSenderFp() != null && request.getReceiverFp() != null) {
             log.info("Session request from sender {}{}{} to receiver {}{}{}",
-                    blue, request.getSenderFp().substring(0,8), reset,
-                    red, request.getReceiverFp().substring(0,8), reset
+                    blue, request.getSenderFp().substring(0, 8), reset,
+                    red, request.getReceiverFp().substring(0, 8), reset
 
             );
         }
@@ -82,6 +82,16 @@ public class SessionController {
             return result;
         }
 
+        if (request.getFileSize() < 0) {
+            result.setResult(ResponseEntity.badRequest().body(
+                    new ServeResponse("error", null, 0, "Invalid file size", 0)));
+            return result;
+        }
+
+        if (result.hasResult()) {
+            return result;
+        }
+
         // Call blocking service
         sessionService.initiateAndWait(
                 request.getSenderFp(),
@@ -90,23 +100,23 @@ public class SessionController {
                 request.getFileSize(),
                 request.getSignature(),
                 request.getFileHash()).thenAccept(session -> {
-            long expiresIn = session.getExpiresAt() - System.currentTimeMillis();
-            result.setResult(ResponseEntity.ok(
-                    new ServeResponse(
-                            "matched",
-                            session.getSessionId(),
-                            session.getSocketPort(),
-                            "Receiver accepted, Proceeding to socket transfer.",
-                            expiresIn)));
-        }).exceptionally(ex -> {
-            // Timeout or error
-            log.error("Serve failed: {}", ex.getMessage());
-            result.setResult(ResponseEntity.status(408).body(
-                    new ServeResponse("timeout", null, 0,
-                            "Receiver didn't respond: " + ex.getMessage(),
-                            0)));
-            return null;
-        });
+                    long expiresIn = session.getExpiresAt() - System.currentTimeMillis();
+                    result.setResult(ResponseEntity.ok(
+                            new ServeResponse(
+                                    "matched",
+                                    session.getSessionId(),
+                                    session.getSocketPort(),
+                                    "Receiver accepted, Proceeding to socket transfer.",
+                                    expiresIn)));
+                }).exceptionally(ex -> {
+                    // Timeout or error
+                    log.error("Serve failed: {}", ex.getMessage());
+                    result.setResult(ResponseEntity.status(408).body(
+                            new ServeResponse("timeout", null, 0,
+                                    "Receiver didn't respond: " + ex.getMessage(),
+                                    0)));
+                    return null;
+                });
 
         return result;
     }
@@ -121,7 +131,7 @@ public class SessionController {
 
         if (request.getReceiverFp() != null) {
             log.info("Listen request from receiver {}{}{}",
-                    red, request.getReceiverFp().substring(0,8), reset);
+                    red, request.getReceiverFp().substring(0, 8), reset);
         }
 
         DeferredResult<ResponseEntity<ListenResponse>> result = new DeferredResult<>(BLOCKING_TIMEOUT); // 30 second

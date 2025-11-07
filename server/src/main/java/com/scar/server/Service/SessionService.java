@@ -15,7 +15,6 @@ import java.util.concurrent.TimeoutException;
 
 import static com.scar.server.Controller.SessionController.*;
 
-
 @Service
 public class SessionService {
     @Value("${rshare.session.blocking-timeout-ms:30000}")

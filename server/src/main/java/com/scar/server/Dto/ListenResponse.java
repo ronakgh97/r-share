@@ -16,8 +16,8 @@ public class ListenResponse {
     }
 
     public ListenResponse(String status, String sessionId, String senderFp,
-                          String filename, long fileSize, String signature,
-                          String fileHash, int socketPort, String message) {
+            String filename, long fileSize, String signature,
+            String fileHash, int socketPort, String message) {
         this.status = status;
         this.sessionId = sessionId;
         this.senderFp = senderFp;

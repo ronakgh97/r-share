@@ -30,7 +30,8 @@ public class SocketSessionRegistry {
      * Returns the PendingConnection if a partner was waiting (so we can notify them),
      * or null if this is the first to arrive
      */
-    public synchronized PendingConnection registerConnection(String sessionId, Channel channel, String role, Session session, Object handler) {
+    public synchronized PendingConnection registerConnection(String sessionId, Channel channel, String role,
+            Session session, Object handler) {
         log.info("Socket connection: {} | role={}{}{} | session={}{}{}",
                 channel.remoteAddress(), green, role, reset, yellow, sessionId.substring(0, 8), reset);
 

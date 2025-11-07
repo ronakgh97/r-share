@@ -99,7 +99,8 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
 
         if ("ACK".equals(ackMessage)) {
             this.readyAckReceived = true;
-            log.info("ACK received from {}{}{} | Session: {}{}{}", green, role, reset, yellow, sessionId.substring(0, 8), reset);
+            log.info("ACK received from {}{}{} | Session: {}{}{}", green, role, reset, yellow,
+                    sessionId.substring(0, 8), reset);
 
             // Mark ACK in the transfer object
             SocketSessionRegistry.ActiveTransfer transfer = registry.getActiveTransfer(sessionId);
@@ -149,7 +150,8 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
         this.sessionId = parts[0].trim();
         this.role = parts[1].trim();
 
-        log.info("Handshake: session={}{}{}, role={}{}{}", yellow, sessionId.substring(0, 8), reset, green, role, green);
+        log.info("Handshake: session={}{}{}, role={}{}{}", yellow, sessionId.substring(0, 8), reset, green, role,
+                green);
 
         // Validate session exists
         Optional<Session> sessionOpt = sessionService.getSession(sessionId);
@@ -165,7 +167,8 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
                 blue, session.getSenderFp().substring(0, 8), reset,
                 red, session.getReceiverFp().substring(0, 8), reset);
 
-        // Register connection - returns partner's pending connection if pairing complete
+        // Register connection - returns partner's pending connection if pairing
+        // complete
         SocketSessionRegistry.PendingConnection partner = registry.registerConnection(
                 sessionId, ctx.channel(), role, session, this);
 
@@ -183,7 +186,8 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
             // Send READY signals - clients must ACK before relay starts
             try {
                 ctx.channel().writeAndFlush(ctx.alloc().buffer(6).writeBytes("READY\n".getBytes())).sync();
-                partner.channel.writeAndFlush(partner.channel.alloc().buffer(6).writeBytes("READY\n".getBytes())).sync();
+                partner.channel.writeAndFlush(partner.channel.alloc().buffer(6).writeBytes("READY\n".getBytes()))
+                        .sync();
             } catch (InterruptedException e) {
                 log.error("Interrupted while sending READY signals", e);
                 ctx.close();
@@ -191,7 +195,8 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
                 return;
             }
 
-            log.info("READY signals sent, waiting for ACKs | Session: {}{}{}", yellow, sessionId.substring(0, 8), reset);
+            log.info("READY signals sent, waiting for ACKs | Session: {}{}{}", yellow, sessionId.substring(0, 8),
+                    reset);
 
             // DON'T set paired=true here! Wait for both ACKs first
             // The checkBothAcked() method will set paired=true when both clients ACK
@@ -230,15 +235,15 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
         ByteBuf copy = buf.copy();
         target.writeAndFlush(copy);
 
-        //if (transfer.bytesTransferred % 1048576 == 0) { // Log every 1MB
-        //    log.info("Transferred: {} MB | Session: {}",
-        //            transfer.bytesTransferred / 1048576,
-        //            sessionId.substring(0, 8));
-        //}
+        // if (transfer.bytesTransferred % 1048576 == 0) { // Log every 1MB
+        // log.info("Transferred: {} MB | Session: {}",
+        // transfer.bytesTransferred / 1048576,
+        // sessionId.substring(0, 8));
+        // }
 
-        //log.info("Total bytes: {}{}{} Transferred for session: {}{}{}",
-        //        cyan, transfer.bytesTransferred, reset,
-        //        yellow, sessionId.substring(0, 8), reset);
+        // log.info("Total bytes: {}{}{} Transferred for session: {}{}{}",
+        // cyan, transfer.bytesTransferred, reset,
+        // yellow, sessionId.substring(0, 8), reset);
 
         buf.release();
     }
