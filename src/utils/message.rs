@@ -1,3 +1,4 @@
+use crate::config::APP_VERSION;
 use crate::dirs::keys::keys_exist_at;
 use crate::dirs::{config, keys};
 use colored::Colorize;
@@ -20,7 +21,7 @@ pub fn show_welcome() {
     }
 
     println!("\n A Rust-based CLI File Share Tool");
-    println!("   Version: 0.0.1-beta\n");
+    println!("   Version: {}\n", APP_VERSION.bright_green().bold());
 
     // Try to load config
     match config::load_config() {

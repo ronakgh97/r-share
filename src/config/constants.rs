@@ -44,16 +44,16 @@ pub const KEY_FINGERPRINT_DISPLAY_LEN: usize = 16;
 
 /// Progress bar template
 pub const PROGRESS_BAR_TEMPLATE: &str =
-    "{spinner:.green} [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta})";
+    "{spinner:.green} [{bar:40.cyan/blue}] {bytes}/{total_bytes} |{bytes_per_sec}| ({eta})";
 
 /// Progress bar characters
-pub const PROGRESS_BAR_CHARS: &str = "#>-";
+pub const PROGRESS_BAR_CHARS: &str = "%$>-";
 
 /// Application name for display
 pub const APP_NAME: &str = "R-Share";
 
 /// Application version
-pub const APP_VERSION: &str = "0.0.1-beta";
+pub const APP_VERSION: &str = "1.0.0";
 
 // Session & Protocol Constants
 
@@ -73,7 +73,7 @@ pub const ACK_SIGNAL: &[u8] = b"ACK\n";
 pub const ERROR_SIGNAL_PREFIX: &str = "ERROR:";
 
 /// Maximum time to wait for DONE signal from receiver (seconds)
-pub const MAX_DONE_WAIT_SECS: u64 = 10;
+pub const MAX_DONE_WAIT_SECS: u64 = 30;
 
 // Validation Constants
 

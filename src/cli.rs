@@ -1,10 +1,11 @@
+use crate::config::APP_VERSION;
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(
     name = "rshare",
-    version = "0.0.1-beta",
+    version = APP_VERSION,
     about = "R-Share - A Rust-based cli server tool for sharing files over a local/public network.",
     long_about = "R-Share is lightweight and secure file sharing tool built in Rust. \
     It allows users to easily share files over local or public networks with encryption and access controls."
