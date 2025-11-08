@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'release tag'
+        required: false
+        default: 'manual-build'
 
 jobs:
   build:
