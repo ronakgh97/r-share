@@ -13,6 +13,7 @@ import org.springframework.web.context.request.async.DeferredResult;
 
 import java.time.Instant;
 
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/relay")
 public class SessionController {
@@ -185,14 +186,58 @@ public class SessionController {
     }
 
     /**
-     * Check total bandwidth usage
+     * Get server stats for dashboard
      */
-    @GetMapping("/bandwidth")
-    public ResponseEntity<Status> getBandwidth() {
+    @GetMapping("/status")
+    public ResponseEntity<Status> getStatus() {
+        // Bandwidth statistics
         long totalBytes = socketSessionRegistry.getTotalBytesTransferred();
-        long totalGigaBytes = totalBytes / (1024 * 1024 * 1024);
-        log.info("Total bandwidth used: {}{}{} GB", red, totalGigaBytes, reset);
-        Status status = new Status(Instant.now().toString(), totalGigaBytes);
+        double totalGB = totalBytes / (1024.0 * 1024.0 * 1024.0);
+        double totalMB = totalBytes / (1024.0 * 1024.0);
+
+        // Memory statistics
+        Runtime runtime = Runtime.getRuntime();
+        double memoryUsedMB = (runtime.totalMemory() - runtime.freeMemory()) / (1024.0 * 1024.0);
+        double memoryMaxMB = runtime.maxMemory() / (1024.0 * 1024.0);
+
+        // Thread statistics
+        int threadCount = Thread.activeCount();
+
+        // CPU usage
+        // TODO: use OperatingSystemMXBean
+        double cpuUsage = 0.0;
+        try {
+            com.sun.management.OperatingSystemMXBean osBean = (com.sun.management.OperatingSystemMXBean) java.lang.management.ManagementFactory
+                    .getOperatingSystemMXBean();
+            cpuUsage = osBean.getCpuLoad() * 100.0;
+        } catch (Exception e) {
+            log.debug("Could not get CPU usage: {}", e.getMessage());
+        }
+
+        // Build status object
+        Status status = new Status.Builder()
+                .timestamp(Instant.now().toString())
+                .serverVersion("0.1.0-BETA")
+                .uptimeSeconds(socketSessionRegistry.getUptimeSeconds())
+                .totalBandwidthGB(totalGB)
+                .totalBandwidthMB(totalMB)
+                .activeSessions(socketSessionRegistry.getActiveSessionCount())
+                .pendingSessions(socketSessionRegistry.getPendingSessionCount())
+                .totalSessionsCompleted(socketSessionRegistry.getTotalSessionsCompleted())
+                .totalSessionsFailed(socketSessionRegistry.getTotalSessionsFailed())
+                .averageTransferSpeedMBps(socketSessionRegistry.getAverageTransferSpeedMBps())
+                .currentTransferCount(socketSessionRegistry.getActiveSessionCount())
+                .peakBandwidthMBps(socketSessionRegistry.getPeakBandwidthMBps())
+                .memoryUsedMB(memoryUsedMB)
+                .memoryMaxMB(memoryMaxMB)
+                .cpuUsagePercent(cpuUsage)
+                .threadCount(threadCount)
+                .build();
+
+        log.info("Status request: {}{}{} GB transferred, {} active sessions",
+                green, String.format("%.2f", totalGB), reset,
+                socketSessionRegistry.getActiveSessionCount());
+
         return ResponseEntity.ok(status);
     }
 }

@@ -23,11 +23,18 @@ public class SocketSessionRegistry {
 
     // Map: sessionId -> ActiveTransfer (both parties connected)
     private final Map<String, ActiveTransfer> activeTransfers = new ConcurrentHashMap<>();
+
+    // Statistics tracking
     private long totalBytesTransferred = 0;
+    private long totalSessionsCompleted = 0;
+    private long totalSessionsFailed = 0;
+    private double peakBandwidthMBps = 0.0;
+    private final long startTime = System.currentTimeMillis();
 
     /**
      * Register a new socket connection with session ID
-     * Returns the PendingConnection if a partner was waiting (so we can notify them),
+     * Returns the PendingConnection if a partner was waiting (so we can notify
+     * them),
      * or null if this is the first to arrive
      */
     public synchronized PendingConnection registerConnection(String sessionId, Channel channel, String role,
@@ -67,6 +74,8 @@ public class SocketSessionRegistry {
         ActiveTransfer transfer = activeTransfers.remove(sessionId);
         if (transfer != null) {
             totalBytesTransferred += transfer.bytesTransferred;
+            totalSessionsCompleted++;
+            updatePeakBandwidth(transfer);
         }
         pendingConnections.remove(sessionId);
         log.info("Removed session: {}", sessionId.substring(0, 8));
@@ -77,6 +86,7 @@ public class SocketSessionRegistry {
         pendingConnections.entrySet().removeIf(entry -> {
             if (entry.getValue().channel == channel) {
                 log.info("Removed pending connection: {}", entry.getKey().substring(0, 8));
+                totalSessionsFailed++;
                 return true;
             }
             return false;
@@ -87,6 +97,8 @@ public class SocketSessionRegistry {
             if (transfer.senderChannel == channel || transfer.receiverChannel == channel) {
                 log.info("Removed active transfer: {}", entry.getKey().substring(0, 8));
                 totalBytesTransferred += transfer.bytesTransferred;
+                totalSessionsCompleted++;
+                updatePeakBandwidth(transfer);
                 // Close the other channel too
                 if (transfer.senderChannel != channel && transfer.senderChannel.isActive()) {
                     transfer.senderChannel.close();
@@ -98,6 +110,52 @@ public class SocketSessionRegistry {
             }
             return false;
         });
+    }
+
+    private void updatePeakBandwidth(ActiveTransfer transfer) {
+        if (transfer.bytesTransferred > 0) {
+            long durationMs = System.currentTimeMillis() - transfer.startTime;
+            if (durationMs > 0) {
+                double speedMBps = (transfer.bytesTransferred / (1024.0 * 1024.0)) / (durationMs / 1000.0);
+                if (speedMBps > peakBandwidthMBps) {
+                    peakBandwidthMBps = speedMBps;
+                }
+            }
+        }
+    }
+
+    // Statistics getters
+    public int getActiveSessionCount() {
+        return activeTransfers.size();
+    }
+
+    public int getPendingSessionCount() {
+        return pendingConnections.size();
+    }
+
+    public long getTotalSessionsCompleted() {
+        return totalSessionsCompleted;
+    }
+
+    public long getTotalSessionsFailed() {
+        return totalSessionsFailed;
+    }
+
+    public double getPeakBandwidthMBps() {
+        return peakBandwidthMBps;
+    }
+
+    public long getUptimeSeconds() {
+        return (System.currentTimeMillis() - startTime) / 1000;
+    }
+
+    public double getAverageTransferSpeedMBps() {
+        long uptimeSeconds = getUptimeSeconds();
+        if (uptimeSeconds > 0 && totalBytesTransferred > 0) {
+            double totalMB = totalBytesTransferred / (1024.0 * 1024.0);
+            return totalMB / uptimeSeconds;
+        }
+        return 0.0;
     }
 
     // Helper classes
@@ -127,6 +185,7 @@ public class SocketSessionRegistry {
         public volatile boolean receiverAcked = false;
         public volatile Object senderHandler;
         public volatile Object receiverHandler;
+        public final long startTime = System.currentTimeMillis();
 
         public ActiveTransfer(String sessionId, Channel senderChannel, Channel receiverChannel, Session session) {
             this.sessionId = sessionId;
