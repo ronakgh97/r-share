@@ -15,10 +15,10 @@ pub const MAX_FILE_SIZE: u64 = 10 * 1024 * 1024 * 1024;
 // Network Constants
 
 /// Default relay server HTTP URL
-pub const DEFAULT_HTTP_URL: &str = "http://80.225.234.249:8080";
+pub const DEFAULT_HTTP_URL: &str = "http://140.245.17.34:8080";
 
 /// Default relay server socket host
-pub const DEFAULT_SOCKET_HOST: &str = "80.225.234.249";
+pub const DEFAULT_SOCKET_HOST: &str = "140.245.17.34";
 
 /// Default relay server socket port
 pub const DEFAULT_SOCKET_PORT: u16 = 10000;
