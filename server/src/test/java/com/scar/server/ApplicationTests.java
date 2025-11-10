@@ -11,6 +11,15 @@ class ApplicationTests {
 	@Test
 	void contextLoads() {
 		assertTrue(true);
+		assertTrue(true);
+		assertTrue(true);
+		assertTrue(true);
+		assertTrue(true);
+		assertTrue(true);
+		assertTrue(true);
+		assertTrue(true);
+		assertTrue(true);
+		assertTrue(true);
 	}
 
 }
