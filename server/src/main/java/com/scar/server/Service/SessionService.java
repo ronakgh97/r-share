@@ -27,21 +27,22 @@ public class SessionService {
 
     public CompletableFuture<Session> initiateAndWait(
             String senderFp, String receiverFp, String filename,
-            long fileSize, String signature, String fileHash) {
+            long fileSize, String signature, String fileHash, String senderEphemeralKey) {
 
         // Validate inputs
         if (senderFp == null || senderFp.isEmpty() ||
                 receiverFp == null || receiverFp.isEmpty() ||
                 filename == null || filename.isEmpty() ||
                 signature == null || signature.isEmpty() ||
-                fileHash == null || fileHash.isEmpty()) {
+                fileHash == null || fileHash.isEmpty() ||
+                senderEphemeralKey == null || senderEphemeralKey.isEmpty()) {
             CompletableFuture<Session> failed = new CompletableFuture<>();
             failed.completeExceptionally(new IllegalArgumentException("Missing required fields"));
             return failed;
         }
 
         String sessionId = UUID.randomUUID().toString();
-        Session session = new Session(sessionId, senderFp, receiverFp, filename, fileSize, signature, fileHash);
+        Session session = new Session(sessionId, senderFp, receiverFp, filename, fileSize, signature, fileHash, senderEphemeralKey);
 
         sessions.put(sessionId, session);
 
@@ -56,6 +57,15 @@ public class SessionService {
             log.info("Listener: {}{}{} already waiting! Matching: {}{}{} immediately",
                     red, receiverFp.substring(0, 8), reset,
                     blue, senderFp.substring(0, 8), reset);
+            
+            // CRITICAL!! Get receiver's ephemeral key from placeholder session
+            String placeholderSessionId = "waiting_" + receiverFp;
+            Session placeholderSession = sessions.get(placeholderSessionId);
+            if (placeholderSession != null && placeholderSession.getReceiverEphemeralKey() != null) {
+                session.setReceiverEphemeralKey(placeholderSession.getReceiverEphemeralKey());
+                sessions.remove(placeholderSessionId); // Clean up placeholder
+            }
+            
             // Listen is waiting! Match immediately
             session.setStatus("matched");
             Waiting.complete(session); // Wake up Listener
@@ -88,10 +98,11 @@ public class SessionService {
         return future;
     }
 
-    public CompletableFuture<Session> listenAndWait(String receiverFp) {
-        if (receiverFp == null || receiverFp.isEmpty()) {
+    public CompletableFuture<Session> listenAndWait(String receiverFp, String receiverEphemeralKey) {
+        if (receiverFp == null || receiverFp.isEmpty() ||
+                receiverEphemeralKey == null || receiverEphemeralKey.isEmpty()) {
             CompletableFuture<Session> failed = new CompletableFuture<>();
-            failed.completeExceptionally(new IllegalArgumentException("Missing receiver fingerprint"));
+            failed.completeExceptionally(new IllegalArgumentException("Missing receiver fingerprint or ephemeral key"));
             return failed;
         }
 
@@ -106,6 +117,7 @@ public class SessionService {
             log.info("Sender already waiting! Matching immediately");
             Session session = pendingSession.get();
             session.setStatus("matched");
+            session.setReceiverEphemeralKey(receiverEphemeralKey); // Store receiver's ephemeral key
 
             CompletableFuture<Session> aliceWaiting = waitingSenders.get(session.getSessionId());
             if (aliceWaiting != null) {
@@ -118,8 +130,28 @@ public class SessionService {
 
         // Sender not initiated yet, Listener waits
         log.info("Sender not ready yet, Listener: {}{}{} blocking...", red, receiverFp.substring(0, 8), reset);
+        
+        // CRITICAL!! Create a placeholder session to store receiver's ephemeral key
+        // This will be updated when sender arrives
+        String placeholderSessionId = "waiting_" + receiverFp;
+        Session placeholderSession = new Session(
+            placeholderSessionId,
+            null, // sender not known yet
+            receiverFp,
+            null, // filename not known yet
+            0,
+            null, // signature not known yet
+            null, // fileHash not known yet
+            null  // sender ephemeral key not known yet
+        );
+        placeholderSession.setReceiverEphemeralKey(receiverEphemeralKey);
+        placeholderSession.setStatus("waiting_sender");
+        
         CompletableFuture<Session> future = new CompletableFuture<>();
         waitingReceivers.put(receiverFp, future);
+
+        // Store the receiver's ephemeral key so sender can find it
+        sessions.put(placeholderSessionId, placeholderSession);
 
         // Timeout handling
         CompletableFuture.delayedExecutor(BLOCKING_TIMEOUT, java.util.concurrent.TimeUnit.MILLISECONDS)
@@ -128,6 +160,7 @@ public class SessionService {
                         log.warn("Listen timeout: {}", receiverFp.substring(0, 8));
                         future.completeExceptionally(new TimeoutException("No sender found"));
                         waitingReceivers.remove(receiverFp);
+                        sessions.remove(placeholderSessionId); // Clean up placeholder
                     }
                 });
 
