@@ -15,21 +15,7 @@ signatures** and **SHA256 integrity verification**. Built with Rust CLI clients 
 - **Ed25519 Signatures** - Cryptographic authentication of every transfer
 - **SHA256 File Hashing** - Automatic integrity verification
 - **Contact Whitelist** - Only transfer with trusted contacts
-- **No Encryption (Yet)** - Data authenticated but not encrypted in transit
-
-### Performance
-
-- **Large File Support** - Tested with 5.6GB+ files
-- **64KB Chunk Streaming** - Memory-efficient transfers
-- **Progress Bars** - Real-time transfer monitoring
-- **Zero-Copy Relay** - Server streams bytes without parsing
-
-### ️ Architecture
-
-- **Rust CLI Client** - Fast, async I/O with Tokio
-- **Spring Boot HTTP API** - Session matching and handshake
-- **Netty Socket Server** - Binary streaming on port 10000
-- **Docker Ready** - One-command deployment
+- **AES Encryption** - Data authenticated and encrypted using AES-GCM
 
 ### Protocol
 
@@ -65,7 +51,7 @@ curl http://localhost:8080/actuator/health
 #### Build from Source
 
 ```shell
-cargo build --release
+cargo fetch
 cargo install --path .
 ```
 
@@ -84,7 +70,7 @@ keys_path = "/home/alice/.rshare/keys"
 download_path = "/home/alice/rshare/downloads"
 
 [server]
-http_url = "http://localhost:8080"
+http_url = "http://localhost:8080" # Self-hosted server URL or use my public server
 socket_host = "localhost"
 socket_port = 10000
 ```
@@ -116,7 +102,7 @@ rs trust add --name bob --key 9876543210fedcba9876543210fedcba9876543210fedcba98
 **Alice sends** a file to Bob:
 
 ```bash
-rs serve --path ./project.zip -to bob
+rs serve --path ./myproject/project.zip --to bob
 ```
 
 **Bob receives** the file:
@@ -128,33 +114,39 @@ rs listen --from alice
 #### Downloads default to `~/rshare/downloads/`
 
 ```shell
-❯❯ rs listen --from self
+rs listen --from self -l
 Listening...
 
 ✓ Ready to receive files
    Save to: C:\Users\ronak\rshare\downloads
-   Fingerprint: af03bc4c805f7b7a...
+   Fingerprint: 8d0e7c4b3c983ed7...
+
+ Generating ephemeral encryption keys...
+✓  Ephemeral key: 401b8954970dc30a...
 
  Waiting for sender to connect...
-✓ Sender connected! Session: c558bd02-c51f-4e5c-bb72-02caef1c6f66
+✓ Session: 6e8f0d41-8d20-4991-b7db-7c44e5c3445f
 
 ✓ Signature verified
-   Expected hash: 9e38b9082c33b6dc...
-✓ Incoming file transfer
-   File: movie2.rar
-   Size: 2734541296 bytes (2607.86 MB)
+   Expected hash: d8afa617794fe38b...
 
-◆ Receiving file...
-  [########################################] 2.55 GiB/2.55 GiB (0s)
+ Deriving encryption key...
+✓  Encryption key derived
+✓ Incoming file transfer
+   File: testfile_500mb.bin
+   Size: 504857600 bytes (481.47 MB)
+
+◆ Receiving and decrypting file...
+  [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] -> (100%) |226.41 MiB/s| *0s*
  Verifying file integrity...
 ✓ File integrity verified
-   Hash: 9e38b9082c33b6dc...
+   Hash: d8afa617794fe38b...
 
  Sending completion signal to sender...
 
 ✓ File received successfully! ;)
-   Saved to: C:\Users\ronak\rshare\downloads\movie2.rar
-   Size: 2734541296 bytes (2607.86 MB)
+   Saved to: C:\Users\ronak\rshare\downloads\testfile_500mb.bin
+   Size: 504857600 bytes (481.47 MB)
 ```
 
 ## Architecture Overview
@@ -194,12 +186,11 @@ sequenceDiagram
 
 1. **HTTP for handshake** - Blocks until both parties ready (No Parsing Nightmares)
 2. **Raw TCP socket** - Zero-copy binary streaming
-3. **Client-side crypto** - Server is untrusted relay
+3. **Client-side crypto** - Server is dumb relay
 4. **DONE signal** - Prevents premature connection closure
 
 ### Known Limitations
 
-- **No encryption** - Files sent in plaintext
 - **Single file only** - No directory/multi-file support yet
 - **No resume** - Transfer must complete or restart from beginning
 - **No compression** - Large files take full bandwidth
@@ -207,45 +198,18 @@ sequenceDiagram
 
 ---
 
-## Roadmap
-
-### Security Enhancement
-
-- [ ] AES-GCM file encryption
-- [ ] ECDH key exchange
-- [ ] Certificate pinning
-- [ ] Rate limiting
-
-### Features
-
-- [ ] Multi-file transfer
-- [ ] Directory support (recursive)
-- [ ] Resume interrupted transfers
-- [ ] Transfer history tracking
-- [ ] Compression (zstd)
-
-### Extras
-
-- [ ] WebSocket protocol
-- [ ] Web UI dashboard
-- [ ] User authentication
-- [ ] Transfer quotas
-- [ ] Prometheus metrics
-- [ ] Kubernetes deployment
-
 ## Contribute
 
 ### Areas for Contribution
 
-- Encryption implementation (AES-GCM)
 - Test coverage (unit + integration)
-- Mobile clients (iOS, Android)
-- Web UI
+- Mobile clients
+- Web UI, Server monitoring dashboard
 - Documentation improvements
 
 ## Stacks
 
-- **Ed25519** - Cryptographic signatures via `ed25519-dalek`
+- **Ed25519** - Cryptographic signatures via `ed25519-dalek`, `x25519-dalek` and `aes-gcm`
 - **Tokio** - Async runtime for Rust
 - **Spring Boot** - HTTP API framework
 - **Netty** - High-performance socket server
