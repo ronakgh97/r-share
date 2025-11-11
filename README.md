@@ -9,8 +9,6 @@
 cryptographic
 signatures** and **SHA256 integrity verification**. Built with Rust CLI clients and a Spring Boot + Netty relay server.
 
----
-
 ## About
 
 ### Security
@@ -29,16 +27,14 @@ signatures** and **SHA256 integrity verification**. Built with Rust CLI clients 
 - **DONE Signal** - Receiver confirms receipt before sender closes
 - **Error Signals** - Clear feedback on signature/hash failures
 
----
-
-## Install
+## Installation
 
 ### 1. Run Local Server
 
 - Make sure 8080 and 10000 ports are free
 
 ```shell
-docker-compose up -d
+docker-compose up -d --build
 curl http://localhost:8080/actuator/health
 ```
 
@@ -77,13 +73,6 @@ rs trust list -v
 - View trusted contacts (should show self by default):
 - Public key is stored to share with others
 
-```shell
- Trusted Contacts:
-
-  • self
-    Key:   e3b1f388f698ba7847f2a8fe90919c7bea54bf363d2c0f827a01890ac93c5482 <-- Public Key btw!!
-    Added: 2025-11-11T08:03:46.482662300+00:00
-```
 
 ### 4. Test Relay
 
@@ -136,8 +125,6 @@ Waiting for receiver confirmation....
 ✓ File reached successfully! :)
 ```
 
----
-
 ## Architecture Overview
 
 ```mermaid
@@ -178,8 +165,6 @@ sequenceDiagram
 - **Bad Error handling** - Crashes on unexpected disconnects
 - **No compression** - Large files take full bandwidth
 - **History command** - CLI defined but not implemented
-
----
 
 ## Contribute
 
