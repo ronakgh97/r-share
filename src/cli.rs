@@ -17,6 +17,12 @@ pub struct Args {
 
 #[derive(Subcommand)]
 pub enum Commands {
+    Me {
+        /// Show your public key
+        #[arg(short, long, default_value = "false")]
+        verbose: bool,
+    },
+
     /// Initialize and generate a public/private key
     Init {
         /// Save keys to custom path, or default to ~/.rshare/keys/

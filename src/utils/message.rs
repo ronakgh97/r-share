@@ -1,10 +1,12 @@
-use crate::config::APP_VERSION;
+use crate::config::{APP_VERSION, KEY_FINGERPRINT_DISPLAY_LEN};
 use crate::dirs::keys::keys_exist_at;
 use crate::dirs::{config, keys};
+use crate::server::RelayClient;
+use crate::utils::error::Result;
 use colored::Colorize;
 use figlet_rs::FIGfont;
 
-pub fn show_welcome() {
+pub async fn show_welcome() -> Result<()> {
     // Load the standard font
     let standard_font = FIGfont::standard().unwrap();
 
@@ -23,6 +25,14 @@ pub fn show_welcome() {
     println!("\n A Rust-based CLI File Share Tool");
     println!("   Version: {}\n", APP_VERSION.bright_green().bold());
 
+    let client = RelayClient::new(
+        "http://localhost:8080".to_string(),
+        "localhost".to_string(),
+        10000,
+    );
+
+    client.health_check().await?;
+
     // Try to load config
     match config::load_config() {
         Ok(loaded_config) => {
@@ -32,12 +42,14 @@ pub fn show_welcome() {
                     Ok((private, public)) => {
                         println!("{} Keys loaded", "✓".bright_green());
                         println!(
-                            "   Private: {}....",
-                            hex::encode(&private.to_bytes()[..4]).dimmed()
+                            "   Private: {}...",
+                            hex::encode(&private.to_bytes()[..KEY_FINGERPRINT_DISPLAY_LEN])
+                                .dimmed()
                         );
                         println!(
-                            "   Public:  {}",
-                            hex::encode(&public.to_bytes()).bright_white()
+                            "   Public:  {}...",
+                            hex::encode(&public.to_bytes()[..KEY_FINGERPRINT_DISPLAY_LEN])
+                                .bright_white()
                         );
                     }
                     Err(_) => {
@@ -57,5 +69,12 @@ pub fn show_welcome() {
         }
     }
 
-    println!("\n📖   Docs: https://github.com/ronakgh97/r-share");
+    println!(
+        "\n📖  Docs: {}",
+        "https://github.com/ronakgh97/r-share"
+            .bright_blue()
+            .underline()
+    );
+
+    Ok(())
 }

@@ -1,5 +1,6 @@
 use crate::config::{ACK_SIGNAL, MAX_DONE_WAIT_SECS, READY_SIGNAL};
 use crate::utils::error::{Error, Result};
+use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
@@ -164,6 +165,29 @@ impl RelayClient {
             socket_host,
             socket_port,
         }
+    }
+
+    pub async fn health_check(&self) -> Result<()> {
+        let client = reqwest::Client::new();
+        let url = format!("{}/actuator/health", self.http_base_url);
+
+        let response = client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| Error::NetworkError(format!("Failed to call health API: {}", e)))?;
+
+        if !response.status().is_success() {
+            return Err(Error::NetworkError(format!(
+                "Health API failed with status :{}",
+                response.status()
+            )));
+        }
+
+        print!("{}", "✓ Server is healthy".bright_green());
+        println!();
+
+        Ok(())
     }
 
     /// Initiate a file transfer as sender (blocks until receiver connects)

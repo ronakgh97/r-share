@@ -9,6 +9,10 @@ async fn main() -> Result<()> {
     let args = Args::parse();
 
     match args.command {
+        Some(Commands::Me { .. }) => {
+            // TODO: Implement "me" command
+            //trust::show_me(verbose).await?;
+        }
         Some(Commands::Init { keys, force }) => {
             init::run(keys, force).await?;
         }
@@ -40,10 +44,10 @@ async fn main() -> Result<()> {
             }
         },
         None => {
-            show_welcome();
+            show_welcome().await?;
         }
         _ => {
-            show_welcome();
+            show_welcome().await?;
         }
     }
 
