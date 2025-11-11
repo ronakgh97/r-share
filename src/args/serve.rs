@@ -12,7 +12,7 @@ use tokio::io::AsyncReadExt;
 
 /// Serve (send) a file to a trusted contact
 pub async fn run(file: PathBuf, to: String, _quiet: bool, local: bool) -> Result<()> {
-    println!("{}", " Serving...\n".bright_cyan().bold());
+    println!("{}", "Serving...\n".bright_blue().bold());
 
     // Validate file exists
     if !file.exists() {
@@ -50,31 +50,37 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, local: bool) -> Result
         .get(&to)
         .ok_or_else(|| Error::InvalidInput(format!("Contact '{}' not found", to)))?;
 
-    // Display transfer info
-    println!("   File: {}", filename.bright_yellow());
-    println!(
-        "   Size: {} bytes ({:.2} MB)",
-        filesize,
-        filesize as f64 / (1024.0 * 1024.0)
-    );
-    println!("   To:   {}", to.bright_white().bold());
-    println!(
-        "   Key:  {}...",
-        &recipient.public_key[..16].bright_cyan().dimmed()
-    );
-    println!();
-
     // Compute file hash for integrity verification
-    println!("{}", " Computing file hash...".bright_cyan());
+    //println!("{}", " Computing file hash...".bright_cyan());
     let file_hash_hex = file_io::compute_file_hash(&file).await?;
+    //println!(
+    //    "{}  Hash: {}...",
+    //    "✓".bright_green(),
+    //    &file_hash_hex[..KEY_FINGERPRINT_DISPLAY_LEN]
+    //        .bright_cyan()
+    //        .dimmed()
+    //);
+    //println!();
+
+    // Display transfer info
     println!(
-        "{}  Hash: {}...",
-        "✓".bright_green(),
-        &file_hash_hex[..KEY_FINGERPRINT_DISPLAY_LEN]
+        " File: {} | Hash {}",
+        filename.bright_yellow(),
+        file_hash_hex[..KEY_FINGERPRINT_DISPLAY_LEN]
             .bright_cyan()
             .dimmed()
     );
-    println!();
+    println!(
+        " Size: {} bytes ({:.2} MB)",
+        filesize,
+        filesize as f64 / (1024.0 * 1024.0)
+    );
+    println!(" To:   {}", to.bright_white().bold());
+    //println!(
+    //    "   Key:  {}...",
+    //    &recipient.public_key[..16].bright_cyan().dimmed()
+    //);
+    //println!();
 
     // Create relay client
     let relay_client = if local {
@@ -97,22 +103,25 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, local: bool) -> Result
     let signature_hex = hex::encode(metadata_signature.to_bytes());
 
     // Generate ephemeral X25519 keypair for this transfer
-    println!(
-        "{}",
-        " Generating ephemeral encryption keys...".bright_cyan()
-    );
+    //println!(
+    //    "{}",
+    //    " Generating ephemeral encryption keys...".bright_cyan()
+    //);
+
     let ephemeral_keypair = key_exchange::EphemeralKeyPair::generate();
     let sender_ephemeral_hex = ephemeral_keypair.public_key_hex();
-    println!(
-        "{}  Ephemeral key: {}...",
-        "✓".bright_green(),
-        &sender_ephemeral_hex[..16].bright_cyan().dimmed()
-    );
-    println!();
+
+    //println!(
+    //    "{}  Ephemeral key: {}...",
+    //    "✓".bright_green(),
+    //    &sender_ephemeral_hex[..16].bright_cyan().dimmed()
+    //);
+    //println!();
 
     // Initiate transfer session (blocks until receiver connects)
     // Metadata is sent via HTTP API
-    println!("{}", " Waiting for receiver to connect...".yellow());
+    println!();
+    println!("{}", "Waiting for receiver to connect...".yellow());
     let mut session = relay_client
         .serve(
             my_fingerprint.clone(),
@@ -125,11 +134,7 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, local: bool) -> Result
         )
         .await?;
 
-    println!(
-        "{} Session: {}",
-        "✓".bright_green(),
-        session.session_id().bright_cyan()
-    );
+    println!("  Session: {}", session.session_id().bright_blue());
     println!();
 
     // Derive encryption key from ephemeral keys
@@ -138,17 +143,17 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, local: bool) -> Result
         .as_ref()
         .ok_or_else(|| Error::CryptoError("Receiver ephemeral key not found".into()))?;
 
-    println!("{}", " Deriving encryption key...".bright_cyan());
+    //println!("{}", " Deriving encryption key...".bright_cyan());
     let aes_key = key_exchange::perform_key_exchange(
         ephemeral_keypair.secret,
         receiver_ephemeral_hex,
         session.session_id(),
     )?;
-    println!("{}  Encryption key derived", "✓".bright_green());
-    println!();
+    //println!("{}  Encryption key derived", "✓".bright_green());
+    //println!();
 
     // Socket now ready for encrypted binary file transfer
-    println!("{} Encrypting and sending file...", "◆".bright_green());
+    println!("{} Encrypting and sending file...", "↗".bright_magenta().bold());
 
     // Send file data with progress bar (encrypt each chunk)
     let mut file_reader = File::open(&file).await?;
@@ -157,7 +162,8 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, local: bool) -> Result
         ProgressStyle::default_bar()
             .template(PROGRESS_BAR_TEMPLATE)
             .unwrap()
-            .progress_chars(PROGRESS_BAR_CHARS),
+            .progress_chars(PROGRESS_BAR_CHARS)
+            .tick_chars(DEFAULT_SPINNER_STYLE),
     );
 
     let mut buffer = vec![0u8; FILE_CHUNK_SIZE];
@@ -185,13 +191,14 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, local: bool) -> Result
     pb.finish_with_message("Transfer complete!");
 
     println!();
-    println!(" Waiting for receiver confirmation...");
+    println!();
+    println!("{}", "Waiting for receiver confirmation....".yellow());
 
     // Wait for receiver's completion confirmation
     let mut ack_buffer = vec![0u8; 10];
     match session.read(&mut ack_buffer).await {
         Ok(n) if n > 0 && &ack_buffer[..n] == DONE_SIGNAL => {
-            println!("{} Receiver confirmed receipt!", "✓".bright_green().bold());
+            println!("  Receiver confirmed receipt!");
         }
         Ok(n) => {
             println!(
@@ -220,11 +227,11 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, local: bool) -> Result
         "{} File reached successfully! :)",
         "✓".bright_green().bold()
     );
-    println!(
-        "   Transferred: {} bytes ({:.2} MB)",
-        total_sent,
-        total_sent as f64 / (1024.0 * 1024.0)
-    );
+    //println!(
+    //    "   Transferred: {} bytes ({:.2} MB)",
+    //    total_sent,
+    //    total_sent as f64 / (1024.0 * 1024.0)
+    //);
 
     Ok(())
 }

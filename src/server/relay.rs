@@ -268,24 +268,24 @@ impl RelayClient {
             .map_err(|e| Error::NetworkError(format!("Failed to parse session response: {}", e)))?;
 
         // Extract required fields from response
-        let session_id = session.session_id.ok_or_else(|| {
-            Error::NetworkError("Server did not return session_id".into())
-        })?;
-        let filename = session.filename.ok_or_else(|| {
-            Error::NetworkError("Server did not return filename".into())
-        })?;
-        let file_size = session.file_size.ok_or_else(|| {
-            Error::NetworkError("Server did not return file_size".into())
-        })?;
-        let signature = session.signature.ok_or_else(|| {
-            Error::NetworkError("Server did not return signature".into())
-        })?;
-        let sender_fp = session.sender_fp.ok_or_else(|| {
-            Error::NetworkError("Server did not return sender_fp".into())
-        })?;
-        let file_hash = session.file_hash.ok_or_else(|| {
-            Error::NetworkError("Server did not return file_hash".into())
-        })?;
+        let session_id = session
+            .session_id
+            .ok_or_else(|| Error::NetworkError("Server did not return session_id".into()))?;
+        let filename = session
+            .filename
+            .ok_or_else(|| Error::NetworkError("Server did not return filename".into()))?;
+        let file_size = session
+            .file_size
+            .ok_or_else(|| Error::NetworkError("Server did not return file_size".into()))?;
+        let signature = session
+            .signature
+            .ok_or_else(|| Error::NetworkError("Server did not return signature".into()))?;
+        let sender_fp = session
+            .sender_fp
+            .ok_or_else(|| Error::NetworkError("Server did not return sender_fp".into()))?;
+        let file_hash = session
+            .file_hash
+            .ok_or_else(|| Error::NetworkError("Server did not return file_hash".into()))?;
         let sender_ephemeral_key = session.sender_ephemeral_key.ok_or_else(|| {
             Error::NetworkError("Server did not return sender ephemeral key".into())
         })?;
