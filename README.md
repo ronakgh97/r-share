@@ -3,12 +3,15 @@
 [![Rust](https://img.shields.io/badge/Rust-1.82+-orange.svg)](https://www.rust-lang.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.7-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Netty](https://img.shields.io/badge/Netty-4.1-blue.svg)](https://netty.io/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**R-Share** is a secure, **blazingly-fast** and lightweight peer-to-peer file sharing tool with **Ed25519 cryptographic
+**R-Share** is a simple secure, **blazingly-fast** and lightweight peer-to-peer file sharing tool with **Ed25519
+cryptographic
 signatures** and **SHA256 integrity verification**. Built with Rust CLI clients and a Spring Boot + Netty relay server.
 
-## Features
+---
+
+## About
 
 ### Security
 
@@ -21,48 +24,38 @@ signatures** and **SHA256 integrity verification**. Built with Rust CLI clients 
 
 - **HTTP Handshake** - DeferredResult blocks until both parties connect
 - **Socket Pairing** - Session-based connection matching
-- **READY/ACK Protocol** - Prevents data loss in both connection orders
+- **Chunked Streaming** - 64KB zero-copy byte streams
+- **Netty Server** - High-performance TCP relay
 - **DONE Signal** - Receiver confirms receipt before sender closes
 - **Error Signals** - Clear feedback on signature/hash failures
 
 ---
 
-## Quick Start
+## Install
 
-### Prerequisites
+### 1. Run Local Server
 
-- **Server**: Docker & Docker Compose
-- **Client**: Rust 1.82+ or pre-built binary
-- **Network**: Ports 8080 (HTTP) and 10000 (TCP) open
-
-### 1. Deploy Server (Docker)
+- Make sure 8080 and 10000 ports are free
 
 ```shell
-git clone https://github.com/ronakgh97/rshare
-cd rshare
-
 docker-compose up -d
-
 curl http://localhost:8080/actuator/health
 ```
 
 ### 2️. Install Client
 
-#### Build from Source
+- Build from source
+- Requires Rustc and Cargo (1.82+)
 
 ```shell
 cargo fetch
 cargo install --path .
-```
 
-### 3. Initialize Client
-
-```shell
-# Generate Ed25519 keypair
 rs init
 ```
 
-#### Create default config at `~/.rshare/config.toml`:
+- Create default keypair and config at `~/.rshare/keys` and `~/.rshare/config.toml`:
+- Adds Self to trusted contacts
 
 ```toml
 [path]
@@ -75,79 +68,75 @@ socket_host = "localhost"
 socket_port = 10000
 ```
 
-### 4. Exchange Public Keys
-
-**Alice** shares her public key with **Bob**:
-
-```bash
-# Alice runs init and shares the displayed public key
-rs init
-# Output shows: Public: a1b2c3d4e5f6...
-```
-
-**Bob** adds Alice as trusted contact:
-
-```bash
-rs trust add --name alice --key a1b2c3d4e5f6789abcdef0123456789abcdef0123456789abcdef0123456789a
-```
-
-**Alice** adds Bob:
-
-```bash
-rs trust add --name bob --key 9876543210fedcba9876543210fedcba9876543210fedcba9876543210fedcba
-```
-
-### 5. Transfer Files
-
-**Alice sends** a file to Bob:
-
-```bash
-rs serve --path ./myproject/project.zip --to bob
-```
-
-**Bob receives** the file:
-
-```bash
-rs listen --from alice 
-```
-
-#### Downloads default to `~/rshare/downloads/`
+### 3. Test Locally with self
 
 ```shell
-rs listen --from self -l
+rs trust list -v
+```
+
+- View trusted contacts (should show self by default):
+- Public key is stored to share with others
+
+```shell
+ Trusted Contacts:
+
+  • self
+    Key:   e3b1f388f698ba7847f2a8fe90919c7bea54bf363d2c0f827a01890ac93c5482 <-- Public Key btw!!
+    Added: 2025-11-11T08:03:46.482662300+00:00
+```
+
+### 4. Test Relay
+
+```bash
+rs serve --path ./donwloads/project.zip --to self --local
+```
+
+```bash
+rs listen --from self --local
+```
+
+- Downloads default to `~/rshare/downloads/`
+
+```shell
+rs listen --from self --local
 Listening...
 
-✓ Ready to receive files
-   Save to: C:\Users\ronak\rshare\downloads
-   Fingerprint: 8d0e7c4b3c983ed7...
+Waiting for sender to connect...
+  Session: 24fee190-a646-4d9b-912f-1e370261a4da
 
- Generating ephemeral encryption keys...
-✓  Ephemeral key: 401b8954970dc30a...
+ File: testfile_500mb.bin | Hash d8afa617794fe38b...
+ Size: 504857600 bytes (481.47 MB)
 
- Waiting for sender to connect...
-✓ Session: 6e8f0d41-8d20-4991-b7db-7c44e5c3445f
+↙ Receiving and decrypting file...
+⠏ |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░| ([100%] / [201.85 MiB/s] / [0s])
 
-✓ Signature verified
-   Expected hash: d8afa617794fe38b...
+Verifying file hash...
+  File hash verified | Hash d8afa617794fe38b...
 
- Deriving encryption key...
-✓  Encryption key derived
-✓ Incoming file transfer
-   File: testfile_500mb.bin
-   Size: 504857600 bytes (481.47 MB)
-
-◆ Receiving and decrypting file...
-  [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] -> (100%) |226.41 MiB/s| *0s*
- Verifying file integrity...
-✓ File integrity verified
-   Hash: d8afa617794fe38b...
-
- Sending completion signal to sender...
-
-✓ File received successfully! ;)
-   Saved to: C:\Users\ronak\rshare\downloads\testfile_500mb.bin
-   Size: 504857600 bytes (481.47 MB)
+✓ File received successfully!
 ```
+
+```shell
+rs serve -f ./downloads/testfile_500mb.bin -t self --local
+Serving...
+
+ File: testfile_500mb.bin | Hash d8afa617794fe38b
+ Size: 504857600 bytes (481.47 MB)
+ To:   self
+
+Waiting for receiver to connect...
+  Session: 24fee190-a646-4d9b-912f-1e370261a4da
+
+↗ Encrypting and sending file...
+⠏ |░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░| ([100%] / [199.95 MiB/s] / [0s])
+
+Waiting for receiver confirmation....
+  Receiver confirmed receipt!
+
+✓ File reached successfully! :)
+```
+
+---
 
 ## Architecture Overview
 
@@ -182,17 +171,11 @@ sequenceDiagram
     Note over Alice, Bob: ✓ Transfer Complete
 ```
 
-### Key Design Decisions:
-
-1. **HTTP for handshake** - Blocks until both parties ready (No Parsing Nightmares)
-2. **Raw TCP socket** - Zero-copy binary streaming
-3. **Client-side crypto** - Server is dumb relay
-4. **DONE signal** - Prevents premature connection closure
-
 ### Known Limitations
 
 - **Single file only** - No directory/multi-file support yet
 - **No resume** - Transfer must complete or restart from beginning
+- **Bad Error handling** - Crashes on unexpected disconnects
 - **No compression** - Large files take full bandwidth
 - **History command** - CLI defined but not implemented
 
@@ -203,8 +186,9 @@ sequenceDiagram
 ### Areas for Contribution
 
 - Test coverage (unit + integration)
-- Mobile clients
+- Error handling and recovery
 - Web UI, Server monitoring dashboard
+- Mobile clients
 - Documentation improvements
 
 ## Stacks
