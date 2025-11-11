@@ -7,7 +7,7 @@ clean-build:
 
 # Clean install (includes removing existing installation)
 clean-install:
-    remove-Item "C:\Users\ronak\.rshare"
+    remove-Item "~\.rshare"
     cargo install --path .
 
 clean-docker:
