@@ -1,8 +1,8 @@
 use anyhow::Result;
 use clap::Parser;
+use rshare::args::{init, listen, serve, trust};
 use rshare::cli::{Args, Commands, TrustAction};
-use rshare::prelude::message::show_welcome;
-use rshare::prelude::{init, listen, serve, trust};
+use rshare::utils::message::show_welcome;
 
 #[tokio::main]
 async fn main() -> Result<()> {

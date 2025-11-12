@@ -71,6 +71,7 @@ pub async fn run(key_path: Option<PathBuf>, force: bool) -> Result<()> {
     println!("{}", " Adding self to trust".bright_cyan());
     let mut contacts = contacts::load_contacts()?;
 
+    // Prevent duplicate "self" entry
     if force && contacts.contacts.contains_key("self") {
         contacts.remove("self")?;
     }
