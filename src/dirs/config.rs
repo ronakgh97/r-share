@@ -1,6 +1,7 @@
 use crate::config::*;
 use crate::dirs::keys;
 use crate::utils::error::{Error, Result};
+use local_ip_address::local_ip;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -18,9 +19,8 @@ pub struct PathConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerConfig {
-    pub http_url: String,
-    pub socket_port: u16,
-    pub socket_host: String,
+    pub public_ip: String,
+    pub private_ip: String,
 }
 
 impl Default for Config {
@@ -36,9 +36,10 @@ impl Default for Config {
                 }
             },
             server: ServerConfig {
-                http_url: DEFAULT_HTTP_URL.to_string(),
-                socket_port: 10000,
-                socket_host: DEFAULT_SOCKET_HOST.to_string(),
+                public_ip: DEFAULT_PUBLIC_IP.to_string(),
+                private_ip: local_ip()
+                    .unwrap_or(DEFAULT_PRIVATE_IP.parse().unwrap())
+                    .to_string(),
             },
         }
     }
@@ -57,9 +58,12 @@ impl Config {
                 }
             },
             server: ServerConfig {
-                http_url: DEFAULT_HTTP_URL.to_string(),
-                socket_port: 10000,
-                socket_host: DEFAULT_SOCKET_HOST.to_string(),
+                // Use available public server by IP address or domain name
+                public_ip: DEFAULT_PUBLIC_IP.to_string(),
+                // Use your own available self-host or private server by IP address or domain name
+                private_ip: local_ip()
+                    .unwrap_or(DEFAULT_PRIVATE_IP.parse().unwrap())
+                    .to_string(),
             },
         }
     }

@@ -1,6 +1,4 @@
-/// Application-wide constants
-
-// File Transfer Constants
+// Application Constants
 
 /// Size of chunks when reading/writing files during transfer (64KB)
 pub const FILE_CHUNK_SIZE: usize = 64 * 1024;
@@ -14,16 +12,20 @@ pub const MAX_FILE_SIZE: u64 = 10 * 1024 * 1024 * 1024;
 
 // Network Constants
 
-/// Default relay server HTTP URL
-pub const DEFAULT_HTTP_URL: &str = "http://217.160.136.206:8080";
+/// Default public server ip address
+pub const DEFAULT_PUBLIC_IP: &str = "217.160.136.206";
 
-/// Default relay server socket host
-pub const DEFAULT_SOCKET_HOST: &str = "217.160.136.206";
+/// Default relay private server ip address
+pub const DEFAULT_PRIVATE_IP: &str = "127.0.0.1";
 
-pub const DEFAULT_SPINNER_STYLE: &str = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏";
+/// Default relay server http port
+pub const DEFAULT_HTTP_PORT: u16 = 8080;
 
 /// Default relay server socket port
 pub const DEFAULT_SOCKET_PORT: u16 = 10000;
+
+/// Default Spinner animation
+pub const DEFAULT_SPINNER_STYLE: &str = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏";
 
 // Cryptographic Constants
 

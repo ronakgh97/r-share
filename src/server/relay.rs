@@ -152,24 +152,27 @@ impl TransferSession {
 
 /// Client for interacting with the relay server
 pub struct RelayClient {
-    http_base_url: String,
-    socket_host: String,
+    server_ip: String,
+    http_port: String,
     socket_port: u16,
 }
 
 impl RelayClient {
     /// Create a new relay client
-    pub fn new(http_base_url: String, socket_host: String, socket_port: u16) -> Self {
+    pub fn new(server_ip: String, http_port: String, socket_port: u16) -> Self {
         Self {
-            http_base_url,
-            socket_host,
+            server_ip,
+            http_port,
             socket_port,
         }
     }
 
     pub async fn health_check(&self) -> Result<()> {
         let client = reqwest::Client::new();
-        let url = format!("{}/actuator/health", self.http_base_url);
+        let url = format!(
+            "http://{}:{}/actuator/health",
+            self.server_ip, self.http_port
+        );
 
         let response = client
             .get(&url)
@@ -203,7 +206,10 @@ impl RelayClient {
     ) -> Result<TransferSession> {
         // Call HTTP API to create session
         let client = reqwest::Client::new();
-        let url = format!("{}/api/relay/serve", self.http_base_url);
+        let url = format!(
+            "http://{}:{}/api/relay/serve",
+            self.server_ip, self.http_port
+        ); // TODO: USE HTTPS
 
         let request = ServeRequest {
             sender_fingerprint,
@@ -263,7 +269,10 @@ impl RelayClient {
     ) -> Result<TransferSession> {
         // Call HTTP API to join session
         let client = reqwest::Client::new();
-        let url = format!("{}/api/relay/listen", self.http_base_url);
+        let url = format!(
+            "http://{}:{}/api/relay/listen",
+            self.server_ip, self.http_port
+        ); // TODO: USE HTTPS
 
         let request = ListenRequest {
             receiver_fingerprint,
@@ -338,7 +347,7 @@ impl RelayClient {
 
     /// Connect to the socket server and perform handshake
     async fn connect_socket(&self, session_id: &str, role: TransferRole) -> Result<TcpStream> {
-        let addr = format!("{}:{}", self.socket_host, self.socket_port);
+        let addr = format!("{}:{}", self.server_ip, self.socket_port);
 
         let mut socket = TcpStream::connect(&addr).await.map_err(|e| {
             Error::NetworkError(format!("Failed to connect to socket server: {}", e))
