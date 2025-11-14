@@ -8,6 +8,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,6 +34,9 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
     private volatile boolean paired = false;
     private volatile boolean readyAckReceived = false;
     private final List<BufferedMessage> bufferedData = new ArrayList<>();
+    private long lastFlushTime = System.currentTimeMillis();
+    @Value("${rshare.server.flush-interval-ms:1000}")
+    private long FLUSH_INTERVAL_MS;
 
     public FileTransferHandler(SocketSessionRegistry registry, SessionService sessionService) {
         this.registry = registry;
@@ -231,7 +235,14 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
         transfer.bytesTransferred += bytes;
 
         ByteBuf copy = buf.retain();
-        target.writeAndFlush(copy); // Flush immediately
+        target.write(copy); // Flush immediately
+
+        // Batch flush every 100ms or when buffer fills
+        long now = System.currentTimeMillis();
+        if (now - lastFlushTime >= FLUSH_INTERVAL_MS) {
+            target.flush();
+            lastFlushTime = now;
+        }
 
         //log.info("Total bytes: {}{}{} Transferred for session: {}{}{}", cyan, transfer.bytesTransferred, reset, yellow, sessionId.substring(0, 8), reset);
 
