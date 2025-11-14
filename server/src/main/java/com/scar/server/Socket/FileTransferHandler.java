@@ -226,16 +226,12 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
             return;
         }
 
-        // Forward data
+        // Forward data immediately (low-latency streaming)
         int bytes = buf.readableBytes();
         transfer.bytesTransferred += bytes;
 
         ByteBuf copy = buf.retain();
-        target.writeAndFlush(copy);
-
-        if (transfer.bytesTransferred % (512 * 1024) == 0) {
-            target.flush();
-        }
+        target.writeAndFlush(copy); // Flush immediately for responsive transfers
 
         // if (transfer.bytesTransferred % 1048576 == 0) { // Log every 1MB
         // log.info("Transferred: {} MB | Session: {}",
