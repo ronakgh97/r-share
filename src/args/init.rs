@@ -99,5 +99,12 @@ pub async fn run(key_path: Option<PathBuf>, force: bool) -> Result<()> {
         hex::encode(&public_key.to_bytes()).bright_white()
     );
 
+    println!(
+        "\n{}",
+        "Configure your config and setup your local server"
+            .bright_red()
+            .bold()
+    );
+
     Ok(())
 }
