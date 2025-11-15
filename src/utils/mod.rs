@@ -2,4 +2,4 @@ pub mod error;
 
 pub mod message;
 
-pub mod file_io;
+pub mod hash;

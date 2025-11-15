@@ -1,13 +1,15 @@
-use crate::config::constants::HASH_CHUNK_SIZE;
+//use crate::config::constants::HASH_CHUNK_SIZE;
 use crate::utils::error::Result;
+use memmap2::Mmap;
 use sha2::{Digest, Sha256};
+use std::fs::File;
 use std::path::PathBuf;
-use tokio::fs::File;
-use tokio::io::AsyncReadExt;
+//use tokio::fs::File;
+//use tokio::io::AsyncReadExt;
 
 /// Compute SHA256 hash of a file
 ///
-/// Reads the file in chunks to avoid loading entire file into memory.
+/// Reads the file using memory-mapped I/O for efficiency.
 /// Returns hex-encoded hash string.
 ///
 /// # Arguments
@@ -17,16 +19,20 @@ use tokio::io::AsyncReadExt;
 /// * `Result<String>` - Hex-encoded SHA256 hash
 pub async fn compute_file_hash(file_path: &PathBuf) -> Result<String> {
     let mut hasher = Sha256::new();
-    let mut file = File::open(file_path).await?;
-    let mut buffer = vec![0u8; HASH_CHUNK_SIZE];
+    let file = File::open(file_path)?;
+    let mmap = unsafe { Mmap::map(&file)? };
 
-    loop {
-        let n = file.read(&mut buffer).await?;
-        if n == 0 {
-            break;
-        }
-        hasher.update(&buffer[..n]);
-    }
+    //let mut file = File::open(file_path).await?;
+    //let mut buffer = vec![0u8; HASH_CHUNK_SIZE];
+    //loop {
+    //    let n = file.read(&mut buffer).await?;
+    //    if n == 0 {
+    //        break;
+    //    }
+    //    hasher.update(&buffer[..n]);
+    //}
+
+    hasher.update(&mmap[..]);
 
     let hash_result = hasher.finalize();
     Ok(hex::encode(hash_result))
