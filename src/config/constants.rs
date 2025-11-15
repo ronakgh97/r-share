@@ -1,10 +1,17 @@
 // Application Constants
 
-/// Size of chunks when reading/writing files during transfer (64KB)
-pub const FILE_CHUNK_SIZE: usize = 64 * 1024;
+/// Size of chunks when reading/writing files during transfer (1MB)
+pub const FILE_CHUNK_SIZE: usize = 1 * 1024 * 1024;
 
-/// Size of chunks when computing file hashes (64KB)
-pub const HASH_CHUNK_SIZE: usize = 64 * 1024;
+/// Size of chunks when computing file hashes (4MB)
+pub const HASH_CHUNK_SIZE: usize = 4 * 1024 * 1024;
+
+/// Buffer size for network transfers (4MB)
+pub const BUFFER_SIZE: usize = 4 * 1024 * 1024;
+
+/// Minimum file size allowed for transfer (10MB)
+/// Note: This is a soft limit for validation, not enforced by protocol
+pub const MIN_FILE_SIZE: u64 = 10 * 1024 * 1024;
 
 /// Maximum file size allowed for transfer (10GB)
 /// Note: This is a soft limit for validation, not enforced by protocol
@@ -48,7 +55,7 @@ pub const KEY_FINGERPRINT_DISPLAY_LEN: usize = 16;
 
 /// Progress bar template
 pub const PROGRESS_BAR_TEMPLATE: &str =
-    "{spinner:.green} |{bar:40.magenta/purple}| ([{percent}%] / [{bytes_per_sec}] / [{eta}])";
+    "{spinner:.green} |{bar:40.magenta/purple}| ([{percent}%] / [{bytes_per_sec}] / [{elapsed}])";
 
 /// Progress bar characters
 pub const PROGRESS_BAR_CHARS: &str = "░▒▓█";
@@ -77,7 +84,7 @@ pub const ACK_SIGNAL: &[u8] = b"ACK\n";
 pub const ERROR_SIGNAL_PREFIX: &str = "ERROR:";
 
 /// Maximum time to wait for DONE signal from receiver (seconds)
-pub const MAX_DONE_WAIT_SECS: u64 = 30;
+pub const MAX_DONE_WAIT_MILLIS: u64 = 100;
 
 // Validation Constants
 
@@ -86,6 +93,3 @@ pub const MAX_CONTACT_NAME_LEN: usize = 50;
 
 /// Maximum length for filename (for validation)
 pub const MAX_FILENAME_LEN: usize = 255;
-
-/// Minimum file size (1 byte)
-pub const MIN_FILE_SIZE: u64 = 1;

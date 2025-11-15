@@ -1,9 +1,10 @@
-use crate::config::{ACK_SIGNAL, MAX_DONE_WAIT_SECS, READY_SIGNAL};
+use crate::config::{ACK_SIGNAL, BUFFER_SIZE, MAX_DONE_WAIT_MILLIS, READY_SIGNAL};
 use crate::utils::error::{Error, Result};
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::TcpStream;
+use std::net::SocketAddr;
+use tokio::io::{AsyncReadExt, AsyncWriteExt, BufReader, BufWriter, ReadHalf, WriteHalf};
+use tokio::net::{TcpSocket, TcpStream};
 
 /// Transfer role in the relay session
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -87,7 +88,8 @@ struct ListenResponse {
 pub struct TransferSession {
     session_id: String,
     role: TransferRole,
-    socket: TcpStream,
+    buf_reader: BufReader<ReadHalf<TcpStream>>,
+    buf_writer: BufWriter<WriteHalf<TcpStream>>,
     // Metadata (only populated for receiver)
     pub filename: Option<String>,
     pub file_size: Option<u64>,
@@ -101,7 +103,7 @@ pub struct TransferSession {
 impl TransferSession {
     /// Read data from the socket connection
     pub async fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
-        self.socket
+        self.buf_reader
             .read(buf)
             .await
             .map_err(|e| Error::NetworkError(format!("Failed to read from socket: {}", e)))
@@ -109,14 +111,14 @@ impl TransferSession {
 
     /// Read exact amount of data from the socket connection
     pub async fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
-        self.socket.read_exact(buf).await?;
+        self.buf_reader.read_exact(buf).await?;
         Ok(())
     }
 
     /// Write data to the socket connection
     #[allow(dead_code)]
     pub async fn write(&mut self, data: &[u8]) -> Result<usize> {
-        self.socket
+        self.buf_writer
             .write(data)
             .await
             .map_err(|e| Error::NetworkError(format!("Failed to write to socket: {}", e)))
@@ -124,7 +126,7 @@ impl TransferSession {
 
     /// Write all data to the socket connection
     pub async fn write_all(&mut self, data: &[u8]) -> Result<()> {
-        self.socket
+        self.buf_writer
             .write_all(data)
             .await
             .map_err(|e| Error::NetworkError(format!("Failed to write all to socket: {}", e)))
@@ -132,7 +134,7 @@ impl TransferSession {
 
     /// Flush the socket connection
     pub async fn flush(&mut self) -> Result<()> {
-        self.socket
+        self.buf_writer
             .flush()
             .await
             .map_err(|e| Error::NetworkError(format!("Failed to flush socket: {}", e)))
@@ -247,10 +249,15 @@ impl RelayClient {
             .connect_socket(&session.session_id, TransferRole::Sender)
             .await?;
 
+        let (read_half, write_half) = tokio::io::split(socket);
+        let buf_reader = BufReader::with_capacity(BUFFER_SIZE, read_half);
+        let buf_writer = BufWriter::with_capacity(BUFFER_SIZE, write_half);
+
         Ok(TransferSession {
             session_id: session.session_id,
             role: TransferRole::Sender,
-            socket,
+            buf_reader,
+            buf_writer,
             filename: None,
             file_size: None,
             signature: None,
@@ -331,10 +338,15 @@ impl RelayClient {
             .connect_socket(&session_id, TransferRole::Receiver)
             .await?;
 
+        let (read_half, write_half) = tokio::io::split(socket);
+        let buf_reader = BufReader::with_capacity(BUFFER_SIZE, read_half);
+        let buf_writer = BufWriter::with_capacity(BUFFER_SIZE, write_half);
+
         Ok(TransferSession {
             session_id,
             role: TransferRole::Receiver,
-            socket,
+            buf_reader,
+            buf_writer,
             filename: Some(filename),
             file_size: Some(file_size),
             signature: Some(signature),
@@ -347,9 +359,27 @@ impl RelayClient {
 
     /// Connect to the socket server and perform handshake
     async fn connect_socket(&self, session_id: &str, role: TransferRole) -> Result<TcpStream> {
-        let addr = format!("{}:{}", self.server_ip, self.socket_port);
+        let addr_str = format!("{}:{}", self.server_ip, self.socket_port);
+        let addr: SocketAddr = addr_str.parse().map_err(|e| {
+            Error::NetworkError(format!("Invalid socket address {}: {}", addr_str, e))
+        })?;
 
-        let mut socket = TcpStream::connect(&addr).await.map_err(|e| {
+        let socket = TcpSocket::new_v4().map_err(|e| {
+            Error::NetworkError(format!("Failed to connect to socket server: {}", e))
+        })?;
+
+        socket
+            .set_nodelay(true)
+            .map_err(|e| Error::NetworkError(format!("Failed to set TCP_NODELAY: {}", e)))?;
+
+        socket
+            .set_send_buffer_size(BUFFER_SIZE as u32)
+            .map_err(|e| Error::NetworkError(format!("Failed to set send buffer: {}", e)))?;
+        socket
+            .set_recv_buffer_size(BUFFER_SIZE as u32)
+            .map_err(|e| Error::NetworkError(format!("Failed to set recv buffer: {}", e)))?;
+
+        let mut socket = socket.connect(addr).await.map_err(|e| {
             Error::NetworkError(format!("Failed to connect to socket server: {}", e))
         })?;
 
@@ -361,7 +391,6 @@ impl RelayClient {
             .map_err(|e| Error::NetworkError(format!("Failed to send handshake: {}", e)))?;
 
         // Wait for READY signal from server (indicates pairing complete)
-        use tokio::io::AsyncReadExt;
         let mut ready_buffer = [0u8; 6]; // "READY\n" is 6 bytes
         socket
             .read_exact(&mut ready_buffer)
@@ -383,7 +412,7 @@ impl RelayClient {
             .map_err(|e| Error::NetworkError(format!("Failed to send ACK: {}", e)))?;
 
         // VERY CRITICAL!!! -> Give server time to process ACK and activate relay before data starts flowing
-        tokio::time::sleep(tokio::time::Duration::from_millis(MAX_DONE_WAIT_SECS)).await;
+        tokio::time::sleep(tokio::time::Duration::from_millis(MAX_DONE_WAIT_MILLIS)).await;
 
         Ok(socket)
     }
