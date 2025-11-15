@@ -35,7 +35,7 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
     private volatile boolean readyAckReceived = false;
     private final List<BufferedMessage> bufferedData = new ArrayList<>();
     private long lastFlushTime = System.currentTimeMillis();
-    @Value("${rshare.server.flush-interval-ms:1000}")
+    //@Value("${rshare.server.flush-interval-ms:750}")
     private long FLUSH_INTERVAL_MS;
 
     public FileTransferHandler(SocketSessionRegistry registry, SessionService sessionService) {
@@ -230,21 +230,22 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
             return;
         }
 
-        // Forward data immediately (low-latency streaming)
+        // Forward data
         int bytes = buf.readableBytes();
         transfer.bytesTransferred += bytes;
 
         ByteBuf copy = buf.retain();
-        target.write(copy); // Flush immediately
+        target.writeAndFlush(copy); // Flush immediately
 
-        // Batch flush every 100ms or when buffer fills
-        long now = System.currentTimeMillis();
-        if (now - lastFlushTime >= FLUSH_INTERVAL_MS) {
-            target.flush();
-            lastFlushTime = now;
-        }
+        // Batch flush every Nms or when buffer fills
+        // long now = System.currentTimeMillis();
+        // if (now - lastFlushTime >= FLUSH_INTERVAL_MS) {
+        // target.flush();
+        // lastFlushTime = now;
+        // }
 
-        //log.info("Total bytes: {}{}{} Transferred for session: {}{}{}", cyan, transfer.bytesTransferred, reset, yellow, sessionId.substring(0, 8), reset);
+        // log.info("Total bytes: {}{}{} Transferred for session: {}{}{}", cyan,
+        // transfer.bytesTransferred, reset, yellow, sessionId.substring(0, 8), reset);
 
         buf.release();
     }

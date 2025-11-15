@@ -58,7 +58,11 @@ public class FileTransferServer {
                         .option(ChannelOption.SO_BACKLOG, backlog)
                         .childOption(ChannelOption.SO_KEEPALIVE, true)
                         .childOption(ChannelOption.TCP_NODELAY, true)
-                        .childOption(ChannelOption.AUTO_READ, true);
+                        .childOption(ChannelOption.AUTO_READ, true)
+                        .childOption(ChannelOption.WRITE_BUFFER_WATER_MARK,
+                                new WriteBufferWaterMark(512 * 1024, 4 * 1024 * 1024))
+                        .option(ChannelOption.WRITE_SPIN_COUNT, 16);  // Batch multiple writes before flushing
+
 
                 ChannelFuture future = bootstrap.bind(PORT).sync();
                 log.info("Socket Server running on port {}", PORT);
