@@ -3,12 +3,14 @@ use crate::crypto::{encryption, key_exchange, signing};
 use crate::dirs::{config, contacts, keys};
 use crate::server::RelayClient;
 use crate::utils::error::{Error, Result};
-use crate::utils::file_io;
+use crate::utils::hash;
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
+//use memmap2::Mmap;
+//use std::fs::File;
 use std::path::PathBuf;
 use tokio::fs::File;
-use tokio::io::AsyncReadExt;
+use tokio::io::{AsyncReadExt, BufReader};
 
 /// Serve (send) a file to a trusted contact
 pub async fn run(file: PathBuf, to: String, _quiet: bool, local: bool) -> Result<()> {
@@ -28,7 +30,7 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, local: bool) -> Result
         ));
     }
 
-    file_io::validate_file_path(&file).await?;
+    hash::validate_file_path(&file).await?;
 
     let filename = file
         .file_name()
@@ -52,7 +54,7 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, local: bool) -> Result
 
     // Compute file hash for integrity verification
     //println!("{}", " Computing file hash...".bright_cyan());
-    let file_hash_hex = file_io::compute_file_hash(&file).await?;
+    let file_hash_hex = hash::compute_file_hash(&file).await?;
     //println!(
     //    "{}  Hash: {}...",
     //    "✓".bright_green(),
@@ -155,11 +157,15 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, local: bool) -> Result
     // Socket now ready for encrypted binary file transfer
     println!(
         "{} Encrypting and sending file...",
-        "↗".bright_magenta().bold()
+        "⇗".bright_magenta().bold()
     );
 
     // Send file data with progress bar (encrypt each chunk)
-    let mut file_reader = File::open(&file).await?;
+    //let file_reader = File::open(&file)?;
+    let file_reader = File::open(&file).await?;
+    let mut buf_reader = BufReader::with_capacity(BUFFER_SIZE, file_reader);
+    //let mmap = unsafe { Mmap::map(&file_reader)? };
+
     let pb = ProgressBar::new(filesize);
     pb.set_style(
         ProgressStyle::default_bar()
@@ -173,13 +179,15 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, local: bool) -> Result
     let mut total_sent = 0u64;
 
     loop {
-        let n = file_reader.read(&mut buffer).await?;
+        let n = buf_reader.read(&mut buffer).await?;
         if n == 0 {
             break;
         }
 
+        //for chunk in mmap.chunks(FILE_CHUNK_SIZE) {
         // Encrypt the chunk before sending
         let encrypted_chunk = encryption::encrypt_chunk(&aes_key, &buffer[..n])?;
+        //let encrypted_chunk = encryption::encrypt_chunk(&aes_key, chunk)?;
 
         // Send encrypted chunk size (4 bytes) followed by encrypted data
         let chunk_size = encrypted_chunk.len() as u32;
@@ -187,6 +195,7 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, local: bool) -> Result
         session.write_all(&encrypted_chunk).await?;
 
         total_sent += n as u64;
+        //total_sent += chunk.len() as u64;
         pb.set_position(total_sent);
     }
 
