@@ -4,9 +4,11 @@ use crate::crypto::{encryption, key_exchange, signing};
 use crate::dirs::{config, contacts, keys};
 use crate::server::RelayClient;
 use crate::utils::error::{Error, Result};
-use crate::utils::file_io;
+use crate::utils::hash;
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
+//use memmap2::MmapMut;
+//use std::fs::OpenOptions;
 use std::path::PathBuf;
 use tokio::fs::File;
 use tokio::io::{AsyncWriteExt, BufWriter};
@@ -193,13 +195,20 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool, local: bool)
     println!();
     println!(
         "{} Receiving and decrypting file...",
-        "↙".bright_magenta().bold()
+        "⇙".bright_magenta().bold()
     );
 
     // Receive encrypted file data with progress bar
     let file_path = download_path.join(&filename);
     let file_writer = File::create(&file_path).await?;
     let mut file_writer = BufWriter::with_capacity(BUFFER_SIZE, file_writer);
+    //let file = OpenOptions::new()
+    //    .read(true)
+    //    .write(true)
+    //    .create(true)
+    //    .open(&file_path)?;
+    //file.set_len(filesize)?;
+    //let mut mmap = unsafe { MmapMut::map_mut(&file)? };
 
     let pb = ProgressBar::new(filesize);
     pb.set_style(
@@ -211,6 +220,7 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool, local: bool)
     );
 
     let mut total_received = 0u64;
+    //let mut offset = 0;
 
     // Read encrypted chunks: [4B size][encrypted data]
     while total_received < filesize {
@@ -227,6 +237,8 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool, local: bool)
             );
 
             // Clean up partial file immediately
+            //drop(mmap);
+            //std::fs::remove_file(&file_path)?;
             drop(file_writer);
             tokio::fs::remove_file(&file_path).await?;
             println!("{} Partial file deleted", "✓".bright_red());
@@ -252,6 +264,8 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool, local: bool)
             );
 
             // Clean up partial file immediately
+            //drop(mmap);
+            //std::fs::remove_file(&file_path)?;
             drop(file_writer);
             tokio::fs::remove_file(&file_path).await?;
             println!("{} Partial file deleted", "✓".bright_red());
@@ -266,11 +280,17 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool, local: bool)
         let plaintext = encryption::decrypt_chunk(&aes_key, &encrypted_buffer)?;
 
         // Write decrypted data to file
+        //let len = plaintext.len();
+        //mmap[offset..offset + len].copy_from_slice(&plaintext);
         file_writer.write_all(&plaintext).await?;
         total_received += plaintext.len() as u64;
+        //offset += len;
+        //total_received += len as u64;
+
         pb.set_position(total_received);
     }
 
+    //mmap.flush()?;
     file_writer.flush().await?;
     pb.finish_with_message("Download complete!");
 
@@ -280,7 +300,7 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool, local: bool)
     println!("{}", "Verifying file hash...".yellow());
 
     // Use the extracted file_io utility
-    let computed_hash = file_io::compute_file_hash(&file_path).await?;
+    let computed_hash = hash::compute_file_hash(&file_path).await?;
 
     // Compare with expected hash from signature
     if computed_hash != file_hash_from_sender {
@@ -294,6 +314,7 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool, local: bool)
         println!();
 
         // Delete corrupted file
+        //std::fs::remove_file(&file_path)?;
         tokio::fs::remove_file(&file_path).await?;
         println!("{} Corrupted file deleted: {}", "✓".bright_red(), filename);
         println!(
