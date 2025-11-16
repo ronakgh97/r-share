@@ -7,16 +7,19 @@ services:
     build:
       context: ./server
       dockerfile: Dockerfile
+      args:
+        HTTP_PORT: ${HTTP_PORT:-8080}
+        SOCKET_PORT: ${SOCKET_PORT:-10000}
     
-    container_name: rshare-server
+  # container_name: rshare-server # removed to allow multiple instances via separate compose projects
     
     # Restart policy for production
     restart: unless-stopped
     
     # Port mappings
     ports:
-      - "8080:8080"   # HTTP API
-      - "10000:10000" # Socket server
+      - "${HTTP_PORT:-8080}:${HTTP_PORT:-8080}"   # HTTP API
+      - "${SOCKET_PORT:-10000}:${SOCKET_PORT:-10000}" # Socket server
     
     # Environment variables
     environment:
@@ -24,11 +27,15 @@ services:
       - SPRING_PROFILES_ACTIVE=default
       
       # Server configuration
-      - SERVER_PORT=8080
-      - SERVER_SOCKET_PORT=10000
+      - SERVER_PORT=${HTTP_PORT:-8080}
+      - SERVER_SOCKET_PORT=${SOCKET_PORT:-10000}
+
+      # For compatibility with Dockerfile vars
+      - HTTP_PORT=${HTTP_PORT:-8080}
+      - SOCKET_PORT=${SOCKET_PORT:-10000}
       
-      # JVM options
-      - JAVA_OPTS=-Xmx768m -Xms256m -XX:+UseG1GC -XX:MaxGCPauseMillis=100
+      # JVM options - pass server ports as system properties so Spring can resolve them
+      - JAVA_OPTS=-Xmx768m -Xms256m -XX:+UseG1GC -XX:MaxGCPauseMillis=100 -Dserver.port=${HTTP_PORT:-8080} -Dserver.socket.port=${SOCKET_PORT:-10000}
       
       # Logging
       - LOGGING_LEVEL_ROOT=INFO
@@ -41,7 +48,7 @@ services:
     
     # Health check
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:${HTTP_PORT:-8080}/actuator/health" ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -74,9 +81,7 @@ services:
 networks:
   rshare-network:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.28.0.0/16
+    # Let Docker pick a free subnet per project; fixed subnets cause conflicts when running multiple compose projects
 
 
 # Volumes
@@ -101,7 +106,7 @@ volumes:
 #
 # Check health status:
 #   docker-compose ps
-#   curl http://localhost:8080/actuator/health
+#   curl http://localhost:${HTTP_PORT}/actuator/health
 #
 # View resource usage:
 #   docker stats rshare-server
