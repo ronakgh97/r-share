@@ -192,6 +192,7 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool, local: bool)
         filesize,
         filesize as f64 / (1024.0 * 1024.0)
     );
+    println!(" From:   {}", from.bright_white().bold());
     println!();
     println!(
         "{} Receiving and decrypting file...",
