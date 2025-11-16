@@ -54,16 +54,22 @@ RUN mkdir -p /app/logs /app/temp && \
 # Switch to non-root user
 USER rshare
 
+ARG HTTP_PORT=8080
+ARG SOCKET_PORT=10000
+
+ENV HTTP_PORT=${HTTP_PORT}
+ENV SOCKET_PORT=${SOCKET_PORT}
+
 # Expose ports
 # 8080: HTTP API for session handshake
 # 10000: TCP socket for file transfers
-EXPOSE 8080 10000
+EXPOSE ${HTTP_PORT} ${SOCKET_PORT}
 
 # Health check configuration
 # Checks every 30 seconds
 HEALTHCHECK  --interval=30s --timeout=3s --start-period=30s --retries=3 \
-    CMD curl -fs http://localhost:8080/actuator/health >/dev/null && \
-    nc -z localhost 10000 || exit 1
+    CMD curl -fs http://localhost:${HTTP_PORT}/actuator/health >/dev/null && \
+    nc -z localhost ${SOCKET_PORT} || exit 1
 
 # JVM Configuration for containers
 # - UseContainerSupport: Detect container memory limits
@@ -77,7 +83,7 @@ ENV JAVA_OPTS="-XX:+UseContainerSupport \
     -Djava.io.tmpdir=/app/temp"
 
 # Spring Boot configuration
-# ENV SPRING_PROFILES_ACTIVE=production / default is used if not set
+# ENV SPRING_PROFILES_ACTIVE=prod / default is used if not set
 
 # Run the application
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
