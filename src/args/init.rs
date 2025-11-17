@@ -101,7 +101,7 @@ pub async fn run(key_path: Option<PathBuf>, force: bool) -> Result<()> {
 
     println!(
         "\n{}",
-        "Configure your relay servers!".bright_yellow().bold()
+        "Configure your relay servers".bright_yellow().bold()
     );
     println!("\n  Example configuration:");
     println!("  ┌──────────────────────────────────┐");
@@ -112,7 +112,7 @@ pub async fn run(key_path: Option<PathBuf>, force: bool) -> Result<()> {
     println!("  │ http_port = 8080                 │");
     println!("  │ socket_port = 10000              │");
     println!("  └──────────────────────────────────┘");
-    println!("\n  Then test: {}", "rs health <server_name>".bright_cyan());
+    println!("\n Health check: {}", "rs health <server_name>".bright_cyan());
 
     Ok(())
 }
