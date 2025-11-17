@@ -24,13 +24,9 @@ pub enum Commands {
     },
 
     Health {
-        /// Use your own home local relay server
+        /// Check relay server health
         #[arg(short, long)]
-        local: bool,
-
-        /// Use the public relay server
-        #[arg(short, long)]
-        public: bool,
+        server: Option<String>,
     },
 
     /// Initialize and generate a public/private key
@@ -50,12 +46,12 @@ pub enum Commands {
         path: Option<PathBuf>,
 
         /// Only accept files from trusted contact
-        #[arg(short, long, conflicts_with = "code")]
+        #[arg(short, long, required = true)]
         from: String,
 
-        /// Use your own home local relay server
+        /// Use relays server from config file
         #[arg(short, long)]
-        local: bool,
+        relay: Option<String>,
 
         /// Enable progress bars
         #[arg(short, long, default_value = "false")]
@@ -68,19 +64,25 @@ pub enum Commands {
         file: PathBuf,
 
         /// Send to trusted contact by name
-        #[arg(short, long, conflicts_with = "code")]
+        #[arg(short, long, required = true)]
         to: String,
 
-        /// Use your own home local relay server
+        /// Use relays server from config file
         #[arg(short, long)]
-        local: bool,
+        relay: Option<String>,
 
         /// Enable progress bars
         #[arg(short, long, default_value = "false")]
         quiet: bool,
     },
 
-    // Manage trusted contacts
+    /// Manage relay servers
+    Relay {
+        #[command(subcommand)]
+        action: ServeAction,
+    },
+
+    /// Manage trusted contacts
     Trust {
         #[command(subcommand)]
         action: TrustAction,
@@ -92,6 +94,15 @@ pub enum Commands {
         #[arg(short, long, default_value = "10")]
         limit: usize,
     },
+}
+
+#[derive(Subcommand)]
+pub enum ServeAction {
+    Add {},
+
+    List {},
+
+    Remove {},
 }
 
 #[derive(Subcommand)]

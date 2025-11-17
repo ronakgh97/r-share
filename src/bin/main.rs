@@ -14,8 +14,8 @@ async fn main() -> Result<()> {
             //trust::show_me(verbose).await?;
         }
 
-        Some(Commands::Health { local, public }) => {
-            health::run(local, public).await?;
+        Some(Commands::Health { server }) => {
+            health::run(server).await?;
         }
 
         Some(Commands::Init { keys, force }) => {
@@ -25,17 +25,17 @@ async fn main() -> Result<()> {
             path,
             from,
             quiet,
-            local,
+            relay,
         }) => {
-            listen::run(path, from, quiet, local).await?;
+            listen::run(path, from, quiet, relay).await?;
         }
         Some(Commands::Serve {
             file,
             to,
             quiet,
-            local,
+            relay,
         }) => {
-            serve::run(file, to, quiet, local).await?;
+            serve::run(file, to, quiet, relay).await?;
         }
         Some(Commands::Trust { action }) => match action {
             TrustAction::Add { name, key } => {

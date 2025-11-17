@@ -155,13 +155,13 @@ impl TransferSession {
 /// Client for interacting with the relay server
 pub struct RelayClient {
     server_ip: String,
-    http_port: String,
+    http_port: u16,
     socket_port: u16,
 }
 
 impl RelayClient {
     /// Create a new relay client
-    pub fn new(server_ip: String, http_port: String, socket_port: u16) -> Self {
+    pub fn new(server_ip: String, http_port: u16, socket_port: u16) -> Self {
         Self {
             server_ip,
             http_port,

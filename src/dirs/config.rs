@@ -8,7 +8,7 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub path: PathConfig,
-    pub server: ServerConfig,
+    pub server: Vec<ServerConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -19,8 +19,11 @@ pub struct PathConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerConfig {
-    pub public_ip: String,
-    pub private_ip: String,
+    pub server_name: String,
+    pub default: bool,
+    pub server_ip: String,
+    pub http_port: u16,
+    pub socket_port: u16,
 }
 
 impl Default for Config {
@@ -35,12 +38,7 @@ impl Default for Config {
                         .join("downloads"),
                 }
             },
-            server: ServerConfig {
-                public_ip: DEFAULT_PUBLIC_IP.to_string(),
-                private_ip: local_ip()
-                    .unwrap_or(DEFAULT_PRIVATE_IP.parse().unwrap())
-                    .to_string(),
-            },
+            server: vec![get_default_server_config().unwrap()],
         }
     }
 }
@@ -57,16 +55,31 @@ impl Config {
                         .join("downloads"),
                 }
             },
-            server: ServerConfig {
-                // Use available public server by IP address or domain name
-                public_ip: DEFAULT_PUBLIC_IP.to_string(),
-                // Use your own available self-host or private server by IP address or domain name
-                private_ip: local_ip()
-                    .unwrap_or(DEFAULT_PRIVATE_IP.parse().unwrap())
-                    .to_string(),
-            },
+            server: vec![get_default_server_config().unwrap()],
         }
     }
+
+    pub fn select_server(&self, name: Option<String>) -> Result<ServerConfig> {
+        if let Some(server_name) = name {
+            self.server
+                .iter()
+                .find(|s| s.server_name == server_name)
+                .cloned()
+                .ok_or_else(|| {
+                    Error::InvalidInput(format!(
+                        "Relay server '{}' not found in config",
+                        server_name
+                    ))
+                })
+        } else {
+            self.server
+                .iter()
+                .find(|s| s.default)
+                .cloned()
+                .ok_or_else(|| Error::InvalidInput("No default server in config".into()))
+        }
+    }
+
     pub fn to_toml_string(&self) -> Result<String> {
         toml::to_string_pretty(self).map_err(|e| {
             Error::FileWrite(format!(
@@ -75,6 +88,18 @@ impl Config {
             ))
         })
     }
+}
+
+fn get_default_server_config() -> Result<ServerConfig> {
+    Ok(ServerConfig {
+        server_name: "my_server".into(),
+        default: true,
+        server_ip: local_ip()
+            .unwrap_or(DEFAULT_PRIVATE_IP.parse().unwrap())
+            .to_string(),
+        http_port: DEFAULT_HTTP_PORT,
+        socket_port: DEFAULT_SOCKET_PORT,
+    })
 }
 
 pub fn get_config_path() -> Result<PathBuf> {
