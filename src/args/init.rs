@@ -112,7 +112,10 @@ pub async fn run(key_path: Option<PathBuf>, force: bool) -> Result<()> {
     println!("  │ http_port = 8080                 │");
     println!("  │ socket_port = 10000              │");
     println!("  └──────────────────────────────────┘");
-    println!("\n Health check: {}", "rs health <server_name>".bright_cyan());
+    println!(
+        "\n Health check: {}",
+        "rs health <server_name>".bright_cyan()
+    );
 
     Ok(())
 }

@@ -208,7 +208,12 @@ pub fn remove_server(config: &mut Config, target: String) -> Result<ServerConfig
         return Err(Error::InvalidInput("Server not found".into()));
     }
 
-    let server = config.server.iter().find(|s| s.server_name == target).cloned().unwrap();
+    let server = config
+        .server
+        .iter()
+        .find(|s| s.server_name == target)
+        .cloned()
+        .unwrap();
 
     save_config(config)?;
     Ok(server)

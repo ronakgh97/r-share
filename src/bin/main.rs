@@ -37,9 +37,13 @@ async fn main() -> Result<()> {
         }) => {
             serve::run(file, to, quiet, relay).await?;
         }
-        Some(Commands::Relay { action
-             }) => match action {
-            ServerAction::Add { name, ip, http_port, socket_port } => {
+        Some(Commands::Relay { action }) => match action {
+            ServerAction::Add {
+                name,
+                ip,
+                http_port,
+                socket_port,
+            } => {
                 relays::add(name, ip, http_port, socket_port).await?;
             }
             ServerAction::List { verbose } => {
@@ -48,7 +52,7 @@ async fn main() -> Result<()> {
             ServerAction::Remove { name } => {
                 relays::remove(name).await?;
             }
-        }
+        },
 
         Some(Commands::Trust { action }) => match action {
             TrustAction::Add { name, key } => {
