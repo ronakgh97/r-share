@@ -1,6 +1,5 @@
 use crate::config::{ACK_SIGNAL, BUFFER_SIZE, MAX_DONE_WAIT_MILLIS, READY_SIGNAL};
 use crate::utils::error::{Error, Result};
-use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt, BufReader, BufWriter, ReadHalf, WriteHalf};
@@ -155,13 +154,13 @@ impl TransferSession {
 /// Client for interacting with the relay server
 pub struct RelayClient {
     server_ip: String,
-    http_port: String,
+    http_port: u16,
     socket_port: u16,
 }
 
 impl RelayClient {
     /// Create a new relay client
-    pub fn new(server_ip: String, http_port: String, socket_port: u16) -> Self {
+    pub fn new(server_ip: String, http_port: u16, socket_port: u16) -> Self {
         Self {
             server_ip,
             http_port,
@@ -188,9 +187,6 @@ impl RelayClient {
                 response.status()
             )));
         }
-
-        print!("{}", "✓ Server is healthy".bright_green());
-        println!();
 
         Ok(())
     }

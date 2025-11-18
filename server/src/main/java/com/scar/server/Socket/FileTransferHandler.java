@@ -8,7 +8,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
+//import org.springframework.beans.factory.annotation.Value;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,9 +34,9 @@ public class FileTransferHandler extends ChannelInboundHandlerAdapter {
     private volatile boolean paired = false;
     private volatile boolean readyAckReceived = false;
     private final List<BufferedMessage> bufferedData = new ArrayList<>();
-    private long lastFlushTime = System.currentTimeMillis();
-    //@Value("${rshare.server.flush-interval-ms:750}")
-    private long FLUSH_INTERVAL_MS;
+    //private long lastFlushTime = System.currentTimeMillis();
+    //@Value("${rshare.socket.flush-interval-ms:750}")
+    //private long FLUSH_INTERVAL_MS;
 
     public FileTransferHandler(SocketSessionRegistry registry, SessionService sessionService) {
         this.registry = registry;

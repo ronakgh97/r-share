@@ -101,9 +101,20 @@ pub async fn run(key_path: Option<PathBuf>, force: bool) -> Result<()> {
 
     println!(
         "\n{}",
-        "Configure your config and setup your local server"
-            .bright_red()
-            .bold()
+        "Configure your relay servers".bright_yellow().bold()
+    );
+    println!("\n  Example configuration:");
+    println!("  ┌──────────────────────────────────┐");
+    println!("  │ [[server]]                       │");
+    println!("  │ server_name = vps-name           │");
+    println!("  │ default = true                   │");
+    println!("  │ server_ip = your-server-ip.co    │");
+    println!("  │ http_port = 8080                 │");
+    println!("  │ socket_port = 10000              │");
+    println!("  └──────────────────────────────────┘");
+    println!(
+        "\n Health check: {}",
+        "rs health <server_name>".bright_cyan()
     );
 
     Ok(())

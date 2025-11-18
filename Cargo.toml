@@ -46,6 +46,7 @@ serde = { version = "1.0.188", features = ["derive"] }
 serde_json = "1.0.107"
 toml = "0.9.8"
 memmap2 = "0.9.9"
+toml_edit = "0.23.7"
 
 # Utilities
 chrono = "0.4.42"

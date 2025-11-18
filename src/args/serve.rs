@@ -1,19 +1,22 @@
 use crate::config::constants::*;
 use crate::crypto::{encryption, key_exchange, signing};
+#[allow(unused_imports)]
+//use std::fs::File;
+use crate::dirs::config::Config;
 use crate::dirs::{config, contacts, keys};
 use crate::server::RelayClient;
 use crate::utils::error::{Error, Result};
 use crate::utils::hash;
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
-//use memmap2::Mmap;
-//use std::fs::File;
+#[allow(unused_imports)]
+use memmap2::Mmap;
 use std::path::PathBuf;
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, BufReader};
 
 /// Serve (send) a file to a trusted contact
-pub async fn run(file: PathBuf, to: String, _quiet: bool, local: bool) -> Result<()> {
+pub async fn run(file: PathBuf, to: String, _quiet: bool, relay: Option<String>) -> Result<()> {
     println!("{}", "Serving...\n".bright_blue().bold());
 
     // Validate file exists
@@ -84,20 +87,15 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, local: bool) -> Result
     //);
     //println!();
 
+    // Select relay server from config
+    let server_config = Config::select_server(&config, relay)?;
+
     // Create relay client
-    let relay_client = if local {
-        RelayClient::new(
-            config.server.private_ip.clone(),
-            DEFAULT_HTTP_PORT.to_string().clone(),
-            DEFAULT_SOCKET_PORT.clone(),
-        )
-    } else {
-        RelayClient::new(
-            config.server.public_ip.clone(),
-            DEFAULT_HTTP_PORT.to_string().clone(),
-            DEFAULT_SOCKET_PORT.clone(),
-        )
-    };
+    let relay_client = RelayClient::new(
+        server_config.server_ip,
+        server_config.http_port,
+        server_config.socket_port,
+    );
 
     // Create transfer metadata and signature (includes file hash)
     let metadata_msg = format!("{}|{}|{}", filename, filesize, file_hash_hex);

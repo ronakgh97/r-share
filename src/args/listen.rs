@@ -1,20 +1,27 @@
 use crate::config::constants::*;
-use crate::crypto;
 use crate::crypto::{encryption, key_exchange, signing};
+use crate::dirs::config::Config;
 use crate::dirs::{config, contacts, keys};
 use crate::server::RelayClient;
 use crate::utils::error::{Error, Result};
 use crate::utils::hash;
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
-//use memmap2::MmapMut;
-//use std::fs::OpenOptions;
+#[allow(unused_imports)]
+use memmap2::MmapMut;
+#[allow(unused_imports)]
+use std::fs::OpenOptions;
 use std::path::PathBuf;
 use tokio::fs::File;
 use tokio::io::{AsyncWriteExt, BufWriter};
 
 /// Listen for incoming file transfers
-pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool, local: bool) -> Result<()> {
+pub async fn run(
+    path: Option<PathBuf>,
+    from: String,
+    _quiet: bool,
+    relay: Option<String>,
+) -> Result<()> {
     println!("{}", "Listening...\n".bright_green().bold());
 
     // Load config and keys
@@ -46,20 +53,15 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool, local: bool)
 
     //println!();
 
+    // Select relay server from config
+    let server_config = Config::select_server(&config, relay)?;
+
     // Create relay client
-    let relay_client = if local {
-        RelayClient::new(
-            config.server.private_ip.clone(),
-            DEFAULT_HTTP_PORT.to_string().clone(),
-            DEFAULT_SOCKET_PORT.clone(),
-        )
-    } else {
-        RelayClient::new(
-            config.server.public_ip.clone(),
-            DEFAULT_HTTP_PORT.to_string().clone(),
-            DEFAULT_SOCKET_PORT.clone(),
-        )
-    };
+    let relay_client = RelayClient::new(
+        server_config.server_ip,
+        server_config.http_port,
+        server_config.socket_port,
+    );
 
     // Generate ephemeral X25519 keypair for this transfer
     //println!(
@@ -67,7 +69,7 @@ pub async fn run(path: Option<PathBuf>, from: String, _quiet: bool, local: bool)
     //" Generating ephemeral encryption keys...".bright_cyan()
     //);
 
-    let ephemeral_keypair = crypto::key_exchange::EphemeralKeyPair::generate();
+    let ephemeral_keypair = key_exchange::EphemeralKeyPair::generate();
     let receiver_ephemeral_hex = ephemeral_keypair.public_key_hex();
 
     //println!(

@@ -1,39 +1,32 @@
-use crate::config::{DEFAULT_HTTP_PORT, DEFAULT_SOCKET_PORT};
-use crate::dirs::config::load_config;
+use crate::dirs::config::{Config, load_config};
 use crate::server::RelayClient;
 use crate::utils::error::Result;
 use colored::Colorize;
 
-pub async fn run(local: bool, public: bool) -> Result<()> {
+pub async fn run(server: Option<String>) -> Result<()> {
     match load_config() {
         Ok(loaded_config) => {
             println!("{} Found config file", "✓".bright_green());
+            println!();
 
-            let relay_client_public = RelayClient::new(
-                loaded_config.server.public_ip.clone(),
-                DEFAULT_HTTP_PORT.to_string().clone(),
-                DEFAULT_SOCKET_PORT.clone(),
+            // Select relay server from config
+            let server_config = Config::select_server(&loaded_config, server)?;
+
+            // Create relay client
+            let relay_client = RelayClient::new(
+                server_config.server_ip,
+                server_config.http_port,
+                server_config.socket_port,
             );
 
-            let relay_client_local = RelayClient::new(
-                loaded_config.server.private_ip.clone(),
-                DEFAULT_HTTP_PORT.to_string().clone(),
-                DEFAULT_SOCKET_PORT.clone(),
+            // Check server health
+            relay_client.health_check().await?;
+
+            print!(
+                "  Server: {} is healthy",
+                server_config.server_name.bright_green()
             );
-
-            if local {
-                match relay_client_local.health_check().await {
-                    Ok(_) => println!("{} Local relay is healthy", "✓".bright_green()),
-                    Err(_) => println!("{} Local relay is unhealthy", "✗".bright_red()),
-                }
-            }
-
-            if public {
-                match relay_client_public.health_check().await {
-                    Ok(_) => println!("{} Public relay is healthy", "✓".bright_green()),
-                    Err(_) => println!("{} Public relay is unhealthy", "✗".bright_red()),
-                }
-            }
+            println!();
         }
         Err(_) => {
             println!();
