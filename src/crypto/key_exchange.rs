@@ -28,8 +28,8 @@ impl EphemeralKeyPair {
 
 /// Parse a hex-encoded X25519 public key
 pub fn parse_public_key(hex_str: &str) -> Result<PublicKey> {
-    let bytes = hex::decode(hex_str)
-        .map_err(|e| Error::CryptoError(format!("Invalid hex public key: {}", e)))?;
+    let bytes =
+        hex::decode(hex_str).map_err(|_e| Error::CryptoError(format!("Invalid hex public key")))?;
 
     if bytes.len() != 32 {
         return Err(Error::CryptoError(format!(
@@ -57,8 +57,8 @@ pub fn derive_aes_key(shared_secret: &[u8; 32], session_id: &str) -> Result<[u8;
     let hkdf = Hkdf::<Sha256>::new(Some(session_id.as_bytes()), shared_secret);
 
     let mut aes_key = [0u8; 32]; // 256 bits for AES-256
-    hkdf.expand(b"rshare-file-encryption-v1", &mut aes_key)
-        .map_err(|e| Error::CryptoError(format!("HKDF key derivation failed: {}", e)))?;
+    hkdf.expand(b"File_Encryption_Test", &mut aes_key)
+        .map_err(|_e| Error::CryptoError(format!("HKDF key derivation failed")))?;
 
     Ok(aes_key)
 }

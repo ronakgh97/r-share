@@ -57,10 +57,9 @@ pub fn decrypt_chunk(aes_key: &[u8; 32], encrypted: &[u8]) -> Result<Vec<u8>> {
     let cipher = Aes256Gcm::new(aes_key.into());
 
     // Decrypt and verify authentication tag
-    let plaintext = cipher.decrypt(nonce, ciphertext).map_err(|e| {
+    let plaintext = cipher.decrypt(nonce, ciphertext).map_err(|_e| {
         Error::CryptoError(format!(
-            "AES-GCM decryption failed (authentication failure or corrupted data): {}",
-            e
+            "Decryption failed (authentication failure or corrupted data)",
         ))
     })?;
 
