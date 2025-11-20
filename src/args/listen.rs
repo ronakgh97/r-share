@@ -48,7 +48,10 @@ pub async fn run(
 
     // Find expected sender
     let expected_sender = contact_list.get(&from).ok_or_else(|| {
-        Error::InvalidInput(format!("Contact '{}' not found in trusted contacts", from))
+        Error::InvalidInput(format!(
+            "Contact >'{}'< not found in trusted contacts",
+            from
+        ))
     })?;
 
     //println!();
@@ -92,26 +95,26 @@ pub async fn run(
     let filename = session
         .filename
         .clone()
-        .ok_or_else(|| Error::InvalidInput("No filename in session".into()))?;
+        .ok_or_else(|| Error::SessionError(format!("No filename in session")))?;
     let filesize = session
         .file_size
-        .ok_or_else(|| Error::InvalidInput("No file size in session".into()))?;
+        .ok_or_else(|| Error::SessionError(format!("No file size in session")))?;
     let signature_hex = session
         .signature
         .clone()
-        .ok_or_else(|| Error::InvalidInput("No signature in session".into()))?;
+        .ok_or_else(|| Error::SessionError(format!("No signature in session")))?;
     let sender_fp = session
         .sender_fp
         .clone()
-        .ok_or_else(|| Error::InvalidInput("No sender fingerprint in session".into()))?;
+        .ok_or_else(|| Error::SessionError(format!("No sender fingerprint in session")))?;
     let file_hash_from_sender = session
         .file_hash
         .clone()
-        .ok_or_else(|| Error::InvalidInput("No file hash in session".into()))?;
+        .ok_or_else(|| Error::SessionError(format!("No file hash in session")))?;
 
     // Verify sender is the expected contact
     if expected_sender.public_key != sender_fp {
-        return Err(Error::InvalidInput(format!(
+        return Err(Error::SessionError(format!(
             "Sender fingerprint mismatch! Expected {}, got {}",
             &expected_sender.public_key[..16],
             &sender_fp[..16]
@@ -120,24 +123,24 @@ pub async fn run(
 
     // Decode sender's public key for signature verification
     let sender_key_bytes = hex::decode(&sender_fp)
-        .map_err(|_| Error::InvalidInput("Invalid sender public key".into()))?;
+        .map_err(|_e| Error::CryptoError(format!("Invalid sender public key")))?;
     let sender_key = ed25519_dalek::VerifyingKey::from_bytes(
         sender_key_bytes
             .as_slice()
             .try_into()
-            .map_err(|_| Error::InvalidInput("Invalid key length".into()))?,
+            .map_err(|_e| Error::CryptoError(format!("Invalid verify key length")))?,
     )
-    .map_err(|_| Error::InvalidInput("Invalid sender key".into()))?;
+    .map_err(|_e| Error::CryptoError("Invalid sender key".into()))?;
 
     // Verify Ed25519 signature on metadata (filename|filesize|hash)
     let metadata_msg = format!("{}|{}|{}", filename, filesize, file_hash_from_sender);
     let signature_bytes = hex::decode(&signature_hex)
-        .map_err(|_| Error::InvalidInput("Invalid signature hex".into()))?;
+        .map_err(|_e| Error::SessionError(format!("Invalid signature hex")))?;
     let signature = ed25519_dalek::Signature::from_bytes(
         signature_bytes
             .as_slice()
             .try_into()
-            .map_err(|_| Error::InvalidInput("Invalid signature length".into()))?,
+            .map_err(|_e| Error::SessionError(format!("Invalid signature key length")))?,
     );
 
     // Verify signature
@@ -149,10 +152,6 @@ pub async fn run(
             println!("   Expected from: {}...", expected.bright_yellow());
         }
         println!();
-        println!(
-            "{} This could be an impersonation attempt or corrupted metadata!",
-            "✗".bright_yellow()
-        );
         println!("{} Transfer REJECTED.", "✗".bright_red().bold());
 
         // Send error signal to sender
@@ -229,7 +228,7 @@ pub async fn run(
     while total_received < filesize {
         // Read 4-byte size prefix
         let mut size_buffer = [0u8; 4];
-        if let Err(e) = session.read_exact(&mut size_buffer).await {
+        if let Err(_e) = session.read_exact(&mut size_buffer).await {
             println!();
             println!(
                 "{} Connection closed early! Received {}/{} bytes ({:.1}%)",
@@ -246,9 +245,8 @@ pub async fn run(
             tokio::fs::remove_file(&file_path).await?;
             println!("{} Partial file deleted", "✓".bright_red());
 
-            return Err(Error::InvalidInput(format!(
-                "Transfer interrupted - connection closed before size prefix: {}",
-                e
+            return Err(Error::SessionError(format!(
+                "Transfer interrupted - connection closed before chunk size read",
             )));
         }
 
@@ -256,7 +254,7 @@ pub async fn run(
 
         // Read encrypted chunk
         let mut encrypted_buffer = vec![0u8; chunk_size];
-        if let Err(e) = session.read_exact(&mut encrypted_buffer).await {
+        if let Err(_e) = session.read_exact(&mut encrypted_buffer).await {
             println!();
             println!(
                 "{} Connection closed early! Received {}/{} bytes ({:.1}%)",
@@ -273,9 +271,8 @@ pub async fn run(
             tokio::fs::remove_file(&file_path).await?;
             println!("{} Partial file deleted", "✓".bright_red());
 
-            return Err(Error::InvalidInput(format!(
-                "Transfer interrupted - connection closed during chunk: {}",
-                e
+            return Err(Error::SessionError(format!(
+                "Transfer interrupted - connection closed while reading chunk",
             )));
         }
 
@@ -320,16 +317,12 @@ pub async fn run(
         //std::fs::remove_file(&file_path)?;
         tokio::fs::remove_file(&file_path).await?;
         println!("{} Corrupted file deleted: {}", "✓".bright_red(), filename);
-        println!(
-            "{} The file may have been tampered with or corrupted during transfer!",
-            "✗".bright_yellow()
-        );
 
         // Send error signal to sender
         let _ = session.write_all(b"ERROR:hash_mismatch\n").await;
         let _ = session.flush().await;
 
-        return Err(Error::InvalidInput("File integrity check failed".into()));
+        return Err(Error::FileError(format!("File integrity check failed")));
     }
 
     println!(

@@ -6,7 +6,7 @@ use crate::dirs::config::Config;
 use crate::dirs::{config, contacts, keys};
 use crate::server::RelayClient;
 use crate::utils::error::{Error, Result};
-use crate::utils::hash;
+use crate::utils::hash::{self, validate_file_path};
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
 #[allow(unused_imports)]
@@ -20,20 +20,7 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, relay: Option<String>)
     println!("{}", "Serving...\n".bright_blue().bold());
 
     // Validate file exists
-    if !file.exists() {
-        return Err(Error::FileNotFound(format!(
-            "File not found: {}",
-            file.display()
-        )));
-    }
-
-    if !file.is_file() {
-        return Err(Error::InvalidInput(
-            "Only single files are supported currently".into(),
-        ));
-    }
-
-    hash::validate_file_path(&file).await?;
+    validate_file_path(&file).await?;
 
     let filename = file
         .file_name()
@@ -53,7 +40,7 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, relay: Option<String>)
     let contact_list = contacts::load_contacts()?;
     let recipient = contact_list
         .get(&to)
-        .ok_or_else(|| Error::InvalidInput(format!("Contact '{}' not found", to)))?;
+        .ok_or_else(|| Error::InvalidInput(format!("Contact >'{}'< not found", to)))?;
 
     // Compute file hash for integrity verification
     //println!("{}", " Computing file hash...".bright_cyan());
@@ -141,7 +128,7 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, relay: Option<String>)
     let receiver_ephemeral_hex = session
         .receiver_ephemeral_key
         .as_ref()
-        .ok_or_else(|| Error::CryptoError("Receiver ephemeral key not found".into()))?;
+        .ok_or_else(|| Error::SessionError(format!("Receiver key not found")))?;
 
     //println!("{}", " Deriving encryption key...".bright_cyan());
     let aes_key = key_exchange::perform_key_exchange(
@@ -212,7 +199,8 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, relay: Option<String>)
         }
         Ok(n) => {
             println!(
-                "{} Got {} bytes, expected DONE signal",
+                //"{} Got {} bytes, expected DONE signal",
+                "{} Unexpected confirmation response: {} bytes",
                 "✗".bright_yellow().bold(),
                 n
             );
@@ -223,20 +211,13 @@ pub async fn run(file: PathBuf, to: String, _quiet: bool, relay: Option<String>)
                 );
             }
         }
-        Err(e) => {
-            println!(
-                "{} Failed to read confirmation: {}",
-                "✗".bright_red().bold(),
-                e
-            );
+        Err(_e) => {
+            println!("{} Failed to read confirmation", "✗".bright_red().bold(),);
         }
     }
 
     println!();
-    println!(
-        "{} File reached successfully! :)",
-        "✓".bright_green().bold()
-    );
+    println!("{} File reached successfully", "✓".bright_green().bold());
     //println!(
     //    "   Transferred: {} bytes ({:.2} MB)",
     //    total_sent,
