@@ -228,17 +228,17 @@ impl RelayClient {
 
         if !response.status().is_success() {
             let status = response.status();
-            let body = response.text().await.unwrap_or_default();
+            //let _body = response.text().await.unwrap_or_default();
             return Err(Error::NetworkError(format!(
-                "Serve API failed with status {}: {}",
-                status, body
+                "Connection timeout or refused, Status: {}",
+                status
             )));
         }
 
         let session: ServeResponse = response
             .json()
             .await
-            .map_err(|_e| Error::NetworkError(format!("Failed to parse session response")))?;
+            .map_err(|_e| Error::SessionError(format!("Failed to parse session response")))?;
 
         // Connect to socket server
         let socket = self
@@ -291,10 +291,10 @@ impl RelayClient {
 
         if !response.status().is_success() {
             let status = response.status();
-            let body = response.text().await.unwrap_or_default();
+            //let _body = response.text().await.unwrap_or_default();
             return Err(Error::NetworkError(format!(
-                "Listen API failed with status {}: {}",
-                status, body
+                "Connection timeout or refused, Status: {}",
+                status
             )));
         }
 
@@ -306,22 +306,22 @@ impl RelayClient {
         // Extract required fields from response
         let session_id = session
             .session_id
-            .ok_or_else(|| Error::NetworkError("Server did not return session_id".into()))?;
+            .ok_or_else(|| Error::SessionError("Server did not return session_id".into()))?;
         let filename = session
             .filename
-            .ok_or_else(|| Error::NetworkError("Server did not return filename".into()))?;
+            .ok_or_else(|| Error::SessionError("Server did not return filename".into()))?;
         let file_size = session
             .file_size
-            .ok_or_else(|| Error::NetworkError("Server did not return file_size".into()))?;
+            .ok_or_else(|| Error::SessionError("Server did not return file_size".into()))?;
         let signature = session
             .signature
-            .ok_or_else(|| Error::NetworkError("Server did not return signature".into()))?;
+            .ok_or_else(|| Error::SessionError("Server did not return signature".into()))?;
         let sender_fp = session
             .sender_fp
-            .ok_or_else(|| Error::NetworkError("Server did not return sender_fp".into()))?;
+            .ok_or_else(|| Error::SessionError("Server did not return sender_fp".into()))?;
         let file_hash = session
             .file_hash
-            .ok_or_else(|| Error::NetworkError("Server did not return file_hash".into()))?;
+            .ok_or_else(|| Error::SessionError("Server did not return file_hash".into()))?;
         let sender_ephemeral_key = session.sender_ephemeral_key.ok_or_else(|| {
             Error::NetworkError("Server did not return sender ephemeral key".into())
         })?;
