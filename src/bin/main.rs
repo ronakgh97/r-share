@@ -65,9 +65,6 @@ async fn main() -> Result<()> {
                 trust::remove(name).await?;
             }
         },
-        None => {
-            show_welcome().await?;
-        }
         _ => {
             show_welcome().await?;
         }
