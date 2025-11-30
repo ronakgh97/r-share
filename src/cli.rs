@@ -17,12 +17,14 @@ pub struct Args {
 
 #[derive(Subcommand)]
 pub enum Commands {
+    /// Show your public key and info
     Me {
         /// Show your public key
         #[arg(short, long, default_value = "false")]
         verbose: bool,
     },
 
+    /// Check relay server health
     Health {
         /// Check relay server health
         #[arg(short, long)]
@@ -40,6 +42,7 @@ pub enum Commands {
         force: bool,
     },
 
+    /// Listen for incoming file transfers
     Listen {
         /// Directory to save received files
         #[arg(short, long)]
@@ -58,6 +61,7 @@ pub enum Commands {
         quiet: bool,
     },
 
+    /// Serve (send) a file to a trusted contact
     Serve {
         /// File(s) or directory to send
         #[arg(short, long, required = true)]
