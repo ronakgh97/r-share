@@ -110,7 +110,7 @@ pub fn get_default_server(config: &Config) -> Result<ServerConfig> {
 pub fn get_config_path() -> Result<PathBuf> {
     let home = dirs::home_dir()
         .ok_or_else(|| Error::FileError("Could not find home directory".to_string()))?;
-    Ok(home.join(".rshare").join("config.toml"))
+    Ok(home.join(".config").join("rshare").join("config.toml"))
 }
 
 pub fn exists_config_at(config_path: &Path) -> bool {

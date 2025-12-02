@@ -12,7 +12,7 @@ const PUBLIC_KEY_FILE: &str = "public.key";
 pub fn get_default_keys_dir() -> Result<PathBuf> {
     let home = dirs::home_dir()
         .ok_or_else(|| Error::ConfigError("Could not determine home directory".to_string()))?;
-    Ok(home.join(".rshare").join("keys"))
+    Ok(home.join(".config").join("rshare").join("keys"))
 }
 
 /// Check if keys exist at given path (or default)
