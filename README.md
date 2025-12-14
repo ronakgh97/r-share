@@ -26,6 +26,7 @@ signatures** and **SHA256 integrity verification**. Built with Rust CLI clients 
 - Multi-file and directory transfer support
 - HTTPS support for relay API communication
 - `me` command to view own identity and fingerprint
+- TUI interface for easier usage
 
 ## Contributions
 
